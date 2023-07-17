@@ -7,6 +7,7 @@ import yaml
 
 from camera import setup_cameras
 from data import read_data_file
+from image import Image
 
 parser = argparse.ArgumentParser(description="CORESI")
 
@@ -58,3 +59,7 @@ events = read_data_file(
     cameras=cameras,
     start_position=0,
 )
+
+image = Image(config["volume"])
+image.read_file("test.bin")
+image.display_z()

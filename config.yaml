@@ -62,3 +62,8 @@ cameras:
     Ox: [1, 0, 0]     # parallel to scatterer edge
     Oy: [0, 0, -1]     # parallel to scatterer edge
     Oz: [0, 1, 0]    # orthogonal to the camera, tw the source
+
+volume:
+  volume_dimensions: [20, 20, 0.4] # In centimeters
+  n_voxels: [50, 50, 1]
+  volume_centre: [0, 0, 0]
