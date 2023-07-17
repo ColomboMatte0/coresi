@@ -14,13 +14,24 @@ class Point(object):
         self.z = z
 
     def __add__(self, other) -> "Point":
-        return Point(self.x + other.x, self.y + other.y, self.z + other.z)
+        if isinstance(other, (int, float, np.int32, np.int64, np.float32, np.float64)):
+            return Point(self.x + other, self.y + other, self.z + other)
+        else:
+            return Point(self.x + other.x, self.y + other.y, self.z + other.z)
 
     def __sub__(self, other) -> "Point":
-        return Point(self.x - other.x, self.y - other.y, self.z - other.z)
+        if isinstance(other, (int, float, np.int32, np.int64, np.float32, np.float64)):
+            return Point(self.x - other, self.y - other, self.z - other)
+        else:
+            return Point(self.x - other.x, self.y - other.y, self.z - other.z)
 
     def __truediv__(self, other) -> "Point":
-        return Point(self.x / other.x, self.y / other.y, self.z / other.z)
+        # Divide by constant
+        if isinstance(other, (int, float, np.int32, np.int64, np.float32, np.float64)):
+            return Point(self.x / other, self.y / other, self.z / other)
+        else:
+            # Divide coord wise
+            return Point(self.x / other.x, self.y / other.y, self.z / other.z)
 
     def __abs__(self) -> "Point":
         return Point(abs(self.x), abs(self.y), abs(self.z))
