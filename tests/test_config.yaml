@@ -1,0 +1,64 @@
+data_file: /home/lequertier/projects/coresi_git/CodeC++/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
+data_type: 'MACACO'
+# Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+E0: -1
+
+# Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
+# Up to 5 absorbers are implemented
+cameras:
+  n_cameras: 2
+    # Cameras scatterer have the same characteristics besides their positions
+  common_attributes:
+    n_sca_layers: 7
+    sca_layer_0:
+      center: [0, 0, -10]
+      size: [9.0, 9.0, 0.2]
+    sca_layer_1:
+      center: [0, 0, -11]
+      size: [9.0, 9.0, 0.2]
+    sca_layer_2:
+      center: [0, 0, -12]
+      size: [9.0, 9.0, 0.2]
+    sca_layer_3:
+      center: [0, 0, -13]
+      size: [9.0, 9.0, 0.2]
+    sca_layer_4:
+      center: [0, 0, -14]
+      size: [9.0, 9.0, 0.2]
+    sca_layer_5:
+      center: [0, 0, -15]
+      size: [9.0, 9.0, 0.2]
+    sca_layer_6:
+      center: [0, 0, -16]
+      size: [9.0, 9.0, 0.2]
+
+    n_absorbers: 5
+
+    # if an absorber layer is missing, define it as None
+    # For example, abs_layer_1: None
+    abs_layer_0: # bottom
+      center: [0, 0, -31.0]
+      size: [28.0, 21.0, 3]
+    abs_layer_1: # front
+      center: [9, 0, -13.0]
+      size: [5.0, 5.0, 5.0]
+    abs_layer_2: # rear
+      center: [-9, 0, -13.0]
+      size: [5.0, 5.0, 5.0]
+    abs_layer_3: # right
+      center: [0, -9, -13.0]
+      size: [5.0, 5.0, 5.0]
+    abs_layer_4: # left
+      center: [0, 9, -13.0]
+      size: [5.0, 5.0, 5.0]
+
+  position_0:
+    frame_origin: [0, 0, 0]
+    Ox: [1, 0, 0]     # parallel to scatterer edge
+    Oy: [0, 1, 0]     # parallel to scatterer edge
+    Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+  position_1:
+    frame_origin: [0, 0, 0]
+    Ox: [1, 0, 0]     # parallel to scatterer edge
+    Oy: [0, 0, -1]     # parallel to scatterer edge
+    Oz: [0, 1, 0]    # orthogonal to the camera, tw the source
