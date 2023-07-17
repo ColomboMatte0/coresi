@@ -5,22 +5,22 @@ from point import Point
 
 
 class Event(object):
-    def __init__(self, line_idx: int, line: str, E0: float, format: str = "MACACO"):
+    def __init__(self, line_idx: int, line: str, E0: float, format: str = "GATE"):
         """
         :param int line_idx: Used to store the id of the line for debugging
         :param str line: The event line
         :param float E0: The energy of the source. -1 if unknown
-        :param str format: The format of the line. Only MACACO is implemented at the moment
+        :param str format: The format of the line. Only gate is implemented at the moment
 
         :raises ValueError: If the computed beta of the event is faulty
         """
         super(Event, self).__init__()
         self.E0 = E0
         self.id = line_idx
-        if format == "MACACO":
-            self.read_macaco(line)
+        if format == "GATE":
+            self.read_gate_dat_file(line)
 
-    def read_macaco(self, line: str) -> None:
+    def read_gate_dat_file(self, line: str) -> None:
         data = line.split("\t")
         # We only deal with two interaction events, don't load other fields
         # Convert str fields to floats

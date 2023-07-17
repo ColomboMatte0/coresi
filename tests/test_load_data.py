@@ -59,7 +59,7 @@ class LoadData(unittest.TestCase):
                     if line_n == 13:
                         Event(line_n, line, -1)
 
-    def test_macaco(self):
+    def test_dat_data(self):
 
         events = read_data_file(
             Path(os.path.dirname(os.path.realpath(__file__)) + "/test.dat"),
