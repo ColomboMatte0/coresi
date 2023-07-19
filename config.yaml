@@ -67,3 +67,9 @@ volume:
   volume_dimensions: [20, 20, 0.4] # In centimeters
   n_voxels: [50, 50, 1]
   volume_centre: [0, 0, 0]
+
+lm_mlem:
+  cone_thickness: 'angular' # angular or parallel
+  last_iter: 20
+  first_iter: 0
+  n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std

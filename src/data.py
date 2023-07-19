@@ -34,5 +34,5 @@ def read_data_file(
                 break
 
     logger.info(f"Got {str(len(events))} events")
-    logger.warning(f"Skipped {str(skipped_events)} events")
+    logger.warning(f"Skipped {str(skipped_events)} events in data parsing")
     return np.array(events)

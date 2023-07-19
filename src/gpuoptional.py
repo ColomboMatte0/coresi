@@ -2,11 +2,12 @@
 # Carl Kadie
 # https://fastlmm.github.io/
 
-import os
-import numpy as np
 import inspect
 import logging
+import os
 from types import ModuleType
+
+import numpy as np
 
 _warn_array_module_once = False
 

@@ -2,14 +2,18 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+import time
 
 import yaml
 
 from camera import setup_cameras
 from data import read_data_file
 from image import Image
+from mlem import LM_MLEM
 
 parser = argparse.ArgumentParser(description="CORESI")
+
+start = time.time()
 
 parser.add_argument(
     "-v",
@@ -54,12 +58,21 @@ logger.info(f"Processing {config['data_file']}")
 # Process events from the data file and associate them with the cameras
 events = read_data_file(
     Path(config["data_file"]),
-    n_events=30,
+    n_events=1,
     E0=config["E0"],
     cameras=cameras,
     start_position=0,
 )
 
-image = Image(config["volume"])
-image.read_file("test.bin")
-image.display_z()
+logger.info(f"Took {time.time() - start} ms to read the data")
+
+# Reinitialize the timer for MLEM
+start = time.time()
+
+logger.info(f"Doing MLEM")
+# Image share the same properties as system matrix line (i.e. Ti), pass it by copy
+mlem = LM_MLEM(config["lm_mlem"], config["volume"], cameras, events)
+result = mlem.run(1)
+# image = mlem.SM_angular_thickness(events[0])
+
+logger.info(f"Took {time.time() - start} ms for MLEM")

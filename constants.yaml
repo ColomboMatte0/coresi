@@ -1,0 +1,5 @@
+doppler_broadening: 
+  a1: 0.3773
+  a2: 0.1443
+  sigma_beta_1: 0.002090928993768552  # rad
+  sigma_beta_2: 0.01835770181680156 # rad

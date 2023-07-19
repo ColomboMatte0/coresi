@@ -16,7 +16,7 @@ class Event(object):
         """
         super(Event, self).__init__()
         self.E0 = E0
-        self.id = line_idx
+        self.id = str(line_idx)
         if format == "GATE":
             self.read_gate_dat_file(line)
 
@@ -31,8 +31,9 @@ class Event(object):
         # Convert to centimeters
         self.V1 = Point(x1 / 10, y1 / 10, z1 / 10)
         self.V2 = Point(x2 / 10, y2 / 10, z2 / 10)
-        self.axis_local = self.V1 - self.V2
-        self.axis = self.V1 - self.V2
+        # Check if the local axis is needed
+        # self.axis_local = self.V1 - self.V2
+        self.axis = (self.V1 - self.V2).normalized()
 
         # Ee is the energy of the electron in a scatterer
         self.Ee = e1
@@ -41,6 +42,7 @@ class Event(object):
 
         # Apply the Compton formula
         # https://en.wikipedia.org/wiki/Compton_scattering
+        # 511 is the electron mass
         self.cosbeta = 1.0 - self.Ee * 511.0 / (self.Eg * (self.Eg + self.Ee))
         if self.cosbeta < -1 or self.cosbeta > 1:
             raise ValueError("Invalid cosbeta")
@@ -53,12 +55,7 @@ class Event(object):
         # The K refers to the Klein-Nishima formula used for differential cross-section
         # https://en.wikipedia.org/wiki/Klein%E2%80%93Nishina_formula
         self.p = self.Eg / self.E0
-        self.K = (
-            self.p
-            * self.p
-            * 0.5
-            * (self.p + (1.0 / self.p) - 1.0 + self.cosbeta * self.cosbeta)
-        )
+        self.K = self.p**2 * 0.5 * (self.p + (1.0 / self.p) - 1.0 + self.cosbeta**2)
 
     def set_camera_index(self, cameras: list[Camera]) -> None:
         """Set the index of the camera where the event has occured"""
