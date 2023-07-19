@@ -54,13 +54,13 @@ cameras:
 
   position_0:
     frame_origin: [0, 0, 0]
-    Ox: [1, 0, 0]     # parallel to scatterer edge
-    Oy: [0, 1, 0]     # parallel to scatterer edge
+    Ox: [1, 0, 0]    # parallel to scatterer edge
+    Oy: [0, 1, 0]    # parallel to scatterer edge
     Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
   position_1:
     frame_origin: [0, 0, 0]
-    Ox: [1, 0, 0]     # parallel to scatterer edge
-    Oy: [0, 0, -1]     # parallel to scatterer edge
+    Ox: [1, 0, 0]    # parallel to scatterer edge
+    Oy: [0, 0, -1]   # parallel to scatterer edge
     Oz: [0, 1, 0]    # orthogonal to the camera, tw the source
 
 volume:
