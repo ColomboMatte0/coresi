@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from gpuoptional import array_module
-import numpy as np
 
 from point import Point
+from gpuoptional import array_module
 
 
 class Image:
@@ -18,14 +18,12 @@ class Image:
         self.center = Point(*config["volume_centre"])
         # Bottom left corner
         self.corner = self.center - (self.dim_in_cm / 2)
-
         self.xp = array_module()
+
         # Contains the actual values of the image
         self.values = self.xp.zeros(
             (self.dim_in_voxels.x, self.dim_in_voxels.y, self.dim_in_voxels.z)
         )
-        self.values[self.dim_in_voxels.x // 2, 0, 0] = 1
-        self.values[0, self.dim_in_voxels.x // 2, 0] = 1
 
     def display_x(self, slice: int = 0, **params):
         fig, ax = plt.subplots()
