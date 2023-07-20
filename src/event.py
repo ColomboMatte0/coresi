@@ -2,6 +2,7 @@ import numpy as np
 
 from camera import Camera
 from point import Point
+from math import sqrt
 
 
 class Event(object):
@@ -46,6 +47,7 @@ class Event(object):
         self.cosbeta = 1.0 - self.Ee * 511.0 / (self.Eg * (self.Eg + self.Ee))
         if self.cosbeta < -1 or self.cosbeta > 1:
             raise ValueError("Invalid cosbeta")
+        self.sinbeta = sqrt(1 - self.cosbeta**2)
         self.beta = np.arccos(self.cosbeta)
 
         # Compute E0 if it's not supplied in the configuration file

@@ -33,6 +33,14 @@ class Point(object):
             # Divide coord wise
             return Point(self.x / other.x, self.y / other.y, self.z / other.z)
 
+    def __mul__(self, other) -> "Point":
+        # Multiply by constant
+        if isinstance(other, (int, float, np.int32, np.int64, np.float32, np.float64)):
+            return Point(self.x * other, self.y * other, self.z * other)
+        else:
+            # Multiply coord wise
+            return Point(self.x * other.x, self.y * other.y, self.z * other.z)
+
     def __abs__(self) -> "Point":
         return Point(abs(self.x), abs(self.y), abs(self.z))
 
@@ -55,6 +63,10 @@ class Point(object):
         self.y = self.y / self.norm
         self.z = self.z / self.norm
         return self
+
+    def norm2(self) -> float:
+        """Compute the norm2 of a point"""
+        return float(np.linalg.norm([self.x, self.y, self.z], 2))
 
     def get_local_coord(self, origin: Self, Ox: Self, Oy: Self, Oz: Self) -> "Point":
         """Convert the point from absolute coordinate to local from the perspective of the

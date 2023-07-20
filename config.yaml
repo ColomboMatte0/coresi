@@ -73,3 +73,4 @@ lm_mlem:
   last_iter: 20
   first_iter: 0
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+  width_factor: 1 # Used to artificially modify the spread of the cone
