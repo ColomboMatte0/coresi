@@ -85,6 +85,7 @@ class LM_MLEM(object):
             line.corner.z + line.dim_in_cm.z - (line.voxel_size.z / 2),
             line.dim_in_voxels.z,
         )
+        # Used to go through the volume
         xx, yy, zz = self.xp.meshgrid(x, y, z, sparse=True, indexing="ij")
 
         # rho_j is a vector with distances from the voxel to the cone origin
@@ -115,14 +116,9 @@ class LM_MLEM(object):
                 f"The cone does not intersect the voxel for event {event.id}"
             )
         mask = line.values == 0
+        # Remove the background for cos_delta_j
         cos_delta_j[mask] = 0
         camera_V1_Oz = self.cameras[event.idx_V1].Oz
-        cos_theta_j = (
-            (camera_V1_Oz.x * (xx - event.V1.x))
-            + (camera_V1_Oz.y * (yy - event.V1.y))
-            + (camera_V1_Oz.z * (zz - event.V1.z)) / rho_j
-        )
-        # Apply a gaussian combination to ddelta so that values decreases as we
         # move further away from the cone boundary
         # Do not compute gaussian for the background outside the cone
         mask = ~mask
@@ -131,7 +127,15 @@ class LM_MLEM(object):
         ) + self.a2 * self.xp.exp(
             -line.values[mask] ** 2 * 0.5 / self.sigma_beta_2**2
         )
-        line.values = line.values * self.xp.abs(cos_theta_j)
+        line.values = line.values * self.xp.abs(
+            (
+                # Compute the angle between the camera z axis and the voxel
+                # "solid angle"
+                (camera_V1_Oz.x * (xx - event.V1.x))
+                + (camera_V1_Oz.y * (yy - event.V1.y))
+                + (camera_V1_Oz.z * (zz - event.V1.z)) / rho_j
+            )
+        )
 
         # lambda / lambda prime
         KN = 1.0 / (1.0 + event.E0 / 511.0 * (1.0 - cos_delta_j))
@@ -144,9 +148,7 @@ class LM_MLEM(object):
         KN = KN * (KN**2 + 1) + KN * KN * (-1.0 + cos_delta_j**2)
 
         # Ti is here i.e. the system matrix for an event
-        line.values = KN * line.values / rho_j**2
-
-        return line.values
+        return KN * line.values / rho_j**2
 
     def read_constants(self, constants_filename: str):
         try:
