@@ -45,6 +45,30 @@ class LM_MLEM(object):
         )
         self.config_volume = config_volume
 
+        self.line = Image(self.config_volume)
+
+        # Sample points along each volume dimension. use voxel size to center
+        # the points on the voxels
+        self.x = self.xp.linspace(
+            self.line.corner.x + (self.line.voxel_size.x / 2),
+            self.line.corner.x + self.line.dim_in_cm.x - (self.line.voxel_size.x / 2),
+            self.line.dim_in_voxels.x,
+        )
+        self.y = self.xp.linspace(
+            self.line.corner.y + (self.line.voxel_size.y / 2),
+            self.line.corner.y + self.line.dim_in_cm.y - (self.line.voxel_size.y / 2),
+            self.line.dim_in_voxels.y,
+        )
+        self.z = self.xp.linspace(
+            self.line.corner.z + (self.line.voxel_size.z / 2),
+            self.line.corner.z + self.line.dim_in_cm.z - (self.line.voxel_size.z / 2),
+            self.line.dim_in_voxels.z,
+        )
+        # Used to go through the volume
+        self.xx, self.yy, self.zz = self.xp.meshgrid(
+            self.x, self.y, self.z, sparse=True, indexing="ij"
+        )
+
     def run(self, last_iter: int, first_iter: int = 0):
         """docstring for run"""
         result = Image(self.config_volume)
@@ -66,74 +90,57 @@ class LM_MLEM(object):
         return result
 
     def SM_angular_thickness(self, event: Event) -> Image:
-        line = Image(self.config_volume)
-
-        # Sample points along each volume dimension. use voxel size to center
-        # the points on the voxels
-        x = self.xp.linspace(
-            line.corner.x + (line.voxel_size.x / 2),
-            line.corner.x + line.dim_in_cm.x - (line.voxel_size.x / 2),
-            line.dim_in_voxels.x,
-        )
-        y = self.xp.linspace(
-            line.corner.y + (line.voxel_size.y / 2),
-            line.corner.y + line.dim_in_cm.y - (line.voxel_size.y / 2),
-            line.dim_in_voxels.y,
-        )
-        z = self.xp.linspace(
-            line.corner.z + (line.voxel_size.z / 2),
-            line.corner.z + line.dim_in_cm.z - (line.voxel_size.z / 2),
-            line.dim_in_voxels.z,
-        )
-        # Used to go through the volume
-        xx, yy, zz = self.xp.meshgrid(x, y, z, sparse=True, indexing="ij")
 
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
         rho_j = self.xp.sqrt(
-            (event.V1.x - xx) ** 2 + (event.V1.y - yy) ** 2 + (event.V1.z - zz) ** 2
+            (event.V1.x - self.xx) ** 2
+            + (event.V1.y - self.yy) ** 2
+            + (event.V1.z - self.zz) ** 2
         )
 
         # delta j, angle from the cone axis to the voxel
-        # xx - event.V1.x is Oj v1. We need it further down in the code but it
+        # self.xx - event.V1.x is Oj v1. We need it further down in the code but it
         # might take a lot of memory to store it. So compute it inline here and
         # below for theta_j. If in the future we have a lot of ram it can be
         # stored
         cos_delta_j = (
-            event.axis.x * (xx - event.V1.x)
-            + event.axis.y * (yy - event.V1.y)
-            + event.axis.z * (zz - event.V1.z)
+            event.axis.x * (self.xx - event.V1.x)
+            + event.axis.y * (self.yy - event.V1.y)
+            + event.axis.z * (self.zz - event.V1.z)
         ) / rho_j
+
         # ddelta is the angle from the voxel to the cone border
-        line.values = self.xp.abs(self.xp.arccos(cos_delta_j) - event.beta)
+        self.line.values = self.xp.abs(self.xp.arccos(cos_delta_j) - event.beta)
 
         # Discard voxels not within the "thick" cone
-        line.values[line.values > self.limit_sigma] = 0
+        self.line.values[self.line.values > self.limit_sigma] = 0
 
-        # If the cone does not intersect with the voxel at all, discard the line
-        if not self.xp.any(line.values):
+        # If the cone does not intersect with the voxel at all, discard the self.line
+        if not self.xp.any(self.line.values):
             raise ValueError(
                 f"The cone does not intersect the voxel for event {event.id}"
             )
-        mask = line.values == 0
+        mask = self.line.values == 0
         # Remove the background for cos_delta_j
         cos_delta_j[mask] = 0
         camera_V1_Oz = self.cameras[event.idx_V1].Oz
-        # move further away from the cone boundary
+
+        # Descrease the values as we move further away from the cone boundary
         # Do not compute gaussian for the background outside the cone
         mask = ~mask
-        line.values[mask] = self.a1 * self.xp.exp(
-            -line.values[mask] ** 2 * 0.5 / self.sigma_beta_1**2
+        self.line.values[mask] = self.a1 * self.xp.exp(
+            -self.line.values[mask] ** 2 * 0.5 / self.sigma_beta_1**2
         ) + self.a2 * self.xp.exp(
-            -line.values[mask] ** 2 * 0.5 / self.sigma_beta_2**2
+            -self.line.values[mask] ** 2 * 0.5 / self.sigma_beta_2**2
         )
-        line.values = line.values * self.xp.abs(
+        self.line.values = self.line.values * self.xp.abs(
             (
                 # Compute the angle between the camera z axis and the voxel
                 # "solid angle"
-                (camera_V1_Oz.x * (xx - event.V1.x))
-                + (camera_V1_Oz.y * (yy - event.V1.y))
-                + (camera_V1_Oz.z * (zz - event.V1.z)) / rho_j
+                (camera_V1_Oz.x * (self.xx - event.V1.x))
+                + (camera_V1_Oz.y * (self.yy - event.V1.y))
+                + (camera_V1_Oz.z * (self.zz - event.V1.z)) / rho_j
             )
         )
 
@@ -147,8 +154,8 @@ class LM_MLEM(object):
         # been a mistake
         KN = KN * (KN**2 + 1) + KN * KN * (-1.0 + cos_delta_j**2)
 
-        # Ti is here i.e. the system matrix for an event
-        return KN * line.values / rho_j**2
+        # Ti is here i.e. the system matrix for an event i
+        return KN * self.line.values / rho_j**2
 
     def read_constants(self, constants_filename: str):
         try:
