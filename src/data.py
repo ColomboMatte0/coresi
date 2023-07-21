@@ -14,7 +14,9 @@ def read_data_file(
     n_events: int,
     E0: float,
     cameras: list[Camera],
+    energy_range: list,
     start_position: int = 0,
+    remove_out_of_range_energies: bool = True,
 ) -> np.ndarray:
     events = []
     skipped_events = 0
@@ -35,4 +37,20 @@ def read_data_file(
 
     logger.info(f"Got {str(len(events))} events")
     logger.warning(f"Skipped {str(skipped_events)} events in data parsing")
+    n_events = len(events)
+    if remove_out_of_range_energies is True:
+        events = filter_bad_events(events, energy_range)
+    logger.warning(
+        f"Skipped {str(n_events - len(events))} events not within the energy range"
+    )
     return np.array(events)
+
+
+def filter_bad_events(events: list[Event], energy_range: list) -> list[Event]:
+    """docstring for filter_bad_events"""
+    return list(
+        filter(
+            lambda event: energy_range[0] < event.E0 and energy_range[1] > event.E0,
+            events,
+        )
+    )

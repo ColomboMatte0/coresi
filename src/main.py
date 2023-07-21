@@ -61,7 +61,10 @@ events = read_data_file(
     n_events=1,
     E0=config["E0"],
     cameras=cameras,
+    # Needed to remove events with energy outside of a given range
+    energy_range=config["energy_range"],
     start_position=0,
+    remove_out_of_range_energies=config["remove_out_of_range_energies"],
 )
 
 logger.info(f"Took {time.time() - start} ms to read the data")
