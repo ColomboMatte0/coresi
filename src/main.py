@@ -75,7 +75,7 @@ start = time.time()
 logger.info("Doing MLEM")
 # Image share the same properties as system matrix line (i.e. Ti), pass it by copy
 mlem = LM_MLEM(config["lm_mlem"], config["volume"], cameras, events)
-result = mlem.run(1)
+result = mlem.run(config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"])
 # image = mlem.SM_angular_thickness(events[0])
 
 logger.info(f"Took {time.time() - start} ms for MLEM")
