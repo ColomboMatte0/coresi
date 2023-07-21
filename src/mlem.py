@@ -1,6 +1,7 @@
 import sys
 from logging import getLogger
 
+import matplotlib.pyplot as plt
 from gpuoptional import array_module
 
 import yaml
@@ -32,6 +33,8 @@ class LM_MLEM(object):
         self.config_volume = config_volume
         # TODO: Figure out whether using a sparse (CPU or GPU) matrix is worth it
         self.line = Image(self.config_volume)
+        # TODO: Read sensitivity from file
+        self.sensivity = Image(self.config_volume, init="ones")
 
         if config_mlem["cone_thickness"] == "angular":
             # Parameters related to Doppler broadening as a sum of two Gaussians
@@ -86,25 +89,42 @@ class LM_MLEM(object):
 
     def run(self, last_iter: int, first_iter: int = 0):
         """docstring for run"""
-        result = Image(self.config_volume)
+        # Was lambda in C++ but lambda is a reserved keyword in Python
+        # TODO: We should be able to load previous results saved in a file
+        result = Image(self.config_volume, init="ones")
+
         for iter in range(first_iter, last_iter):
+            logger.info(f"Iteration {str(iter)}")
+            # Temporary test
+            print(f"size of events: {str(len(self.events))}")
             skipped_events = 0
+            # It must be initialized as zero as temporary values are sumed
+            # there
+            next_result = Image(self.config_volume, init="zeros")
             for event in self.events:
                 try:
-                    line = self.SM_line(event)
+                    line = self.SM_line(iter, event)
                 except ValueError as e:
                     # TODO: remove event from events for future iteratiosn
                     skipped_events += 1
                     logger.warning(f"Skipping event {line.strip()} REASON: {e}")
+                    # Remove it from the list because we known we don't need to
+                    # look at it anymore
+                    # TODO: check whether this works
+                    self.events.remove(event)
                     continue
+                forward_proj = self.xp.vdot(line.values, result.values)
+                next_result.values += line.values / forward_proj
+
+            result.values = result.values / self.sensivity.values * next_result.values
 
             logger.warning(
-                f"Skipped {str(skipped_events)} events when computing the system matrix"
+                f"Skipped {str(skipped_events)} events when computing the system matrix at iteration {str(iter)}"
             )
 
         return result
 
-    def SM_angular_thickness(self, event: Event) -> Image:
+    def SM_angular_thickness(self, iter: int, event: Event) -> Image:
         logger.info("Using angular")
 
         # rho_j is a vector with distances from the voxel to the cone origin
@@ -132,7 +152,7 @@ class LM_MLEM(object):
         self.line.values[self.line.values > self.limit_sigma] = 0
 
         # If the cone does not intersect with the voxel at all, discard the self.line
-        if not self.xp.any(self.line.values):
+        if iter == 0 and not self.xp.any(self.line.values):
             raise ValueError(
                 f"The cone does not intersect the voxel for event {event.id}"
             )
@@ -173,7 +193,7 @@ class LM_MLEM(object):
         self.line.values = KN * self.line.values / rho_j**2
         return self.line
 
-    def SM_parallel_thickness(self, event: Event) -> Image:
+    def SM_parallel_thickness(self, iter: int, event: Event) -> Image:
         """docstring for SM_parallel_thickness"""
         logger.info("Using parallel")
         # rho_j is a vector with distances from the voxel to the cone origin
@@ -205,7 +225,7 @@ class LM_MLEM(object):
         self.line.values[self.line.values > self.limit_sigma] = 0
 
         # If the cone does not intersect with the voxel at all, discard the self.line
-        if not self.xp.any(self.line.values):
+        if iter == 0 and not self.xp.any(self.line.values):
             raise ValueError(
                 f"The cone does not intersect the voxel for event {event.id}"
             )

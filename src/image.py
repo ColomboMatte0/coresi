@@ -1,6 +1,4 @@
 import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from point import Point
@@ -10,7 +8,7 @@ from gpuoptional import array_module
 class Image:
     """docstring for Image"""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, init="zeros"):
         super(Image, self).__init__()
         self.dim_in_voxels = Point(*config["n_voxels"])
         self.dim_in_cm = Point(*config["volume_dimensions"])
@@ -21,9 +19,14 @@ class Image:
         self.xp = array_module()
 
         # Contains the actual values of the image
-        self.values = self.xp.zeros(
-            (self.dim_in_voxels.x, self.dim_in_voxels.y, self.dim_in_voxels.z)
-        )
+        if init == "zeros":
+            self.values = self.xp.zeros(
+                (self.dim_in_voxels.x, self.dim_in_voxels.y, self.dim_in_voxels.z)
+            )
+        if init == "ones":
+            self.values = self.xp.ones(
+                (self.dim_in_voxels.x, self.dim_in_voxels.y, self.dim_in_voxels.z)
+            )
 
     def display_x(self, slice: int = 0, **params):
         fig, ax = plt.subplots()
@@ -78,7 +81,6 @@ class Image:
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
-        plt.show()
 
     def read_file(self, file_name: str) -> None:
         self.values = self.xp.fromfile(file_name, dtype="double").reshape(
