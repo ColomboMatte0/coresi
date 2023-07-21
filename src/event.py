@@ -1,8 +1,9 @@
+from math import sqrt
+
 import numpy as np
 
 from camera import Camera
 from point import Point
-from math import sqrt
 
 
 class Event(object):

@@ -1,13 +1,11 @@
 import sys
 from logging import getLogger
 
-import matplotlib.pyplot as plt
-from gpuoptional import array_module
-
 import yaml
 
 from camera import Camera
 from event import Event
+from gpuoptional import array_module
 from image import Image
 
 logger = getLogger("__main__." + __name__)
