@@ -53,6 +53,7 @@ class LM_MLEM(object):
             )
             # Alias to avoid redoing the test between angular and parallel in
             # run
+            logger.debug("Using angular thickness")
             self.SM_line = self.SM_angular_thickness
         # Parallel thickness
         else:
@@ -60,6 +61,7 @@ class LM_MLEM(object):
                 self.line.voxel_size.norm2() * config_mlem["width_factor"] / 2
             )
             self.limit_sigma = self.sigma_beta * config_mlem["n_sigma"]
+            logger.debug("Using parallel` thickness")
             self.SM_line = self.SM_parallel_thickness
 
         self.xp = array_module()
@@ -125,7 +127,6 @@ class LM_MLEM(object):
         return result
 
     def SM_angular_thickness(self, iter: int, event: Event) -> Image:
-        logger.info("Using angular")
 
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
@@ -195,7 +196,6 @@ class LM_MLEM(object):
 
     def SM_parallel_thickness(self, iter: int, event: Event) -> Image:
         """docstring for SM_parallel_thickness"""
-        logger.info("Using parallel")
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
         rho_j = self.xp.sqrt(
