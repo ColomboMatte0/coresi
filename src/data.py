@@ -36,13 +36,17 @@ def read_data_file(
                 break
 
     logger.info(f"Got {str(len(events))} events")
-    logger.warning(f"Skipped {str(skipped_events)} events in data parsing")
+
+    if skipped_events > 0:
+        logger.warning(f"Skipped {str(skipped_events)} events in data parsing")
+
     n_events = len(events)
     if remove_out_of_range_energies is True:
         events = filter_bad_events(events, energy_range)
-    logger.warning(
-        f"Skipped {str(n_events - len(events))} events not within the energy range"
-    )
+
+    if (n_filtered := n_events - len(events)) > 0:
+        logger.warning(f"Skipped {str(n_filtered)} events not within the energy range")
+
     return np.array(events)
 
 

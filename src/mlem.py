@@ -118,9 +118,10 @@ class LM_MLEM(object):
 
             result.values = result.values / self.sensivity.values * next_result.values
 
-            logger.warning(
-                f"Skipped {str(skipped_events)} events when computing the system matrix at iteration {str(iter)}"
-            )
+            if skipped_events > 0:
+                logger.warning(
+                    f"Skipped {str(skipped_events)} events when computing the system matrix at iteration {str(iter)}"
+                )
 
         return result
 
