@@ -72,7 +72,7 @@ logger.info(f"Took {time.time() - start} ms to read the data")
 # Reinitialize the timer for MLEM
 start = time.time()
 
-logger.info(f"Doing MLEM")
+logger.info("Doing MLEM")
 # Image share the same properties as system matrix line (i.e. Ti), pass it by copy
 mlem = LM_MLEM(config["lm_mlem"], config["volume"], cameras, events)
 result = mlem.run(1)
