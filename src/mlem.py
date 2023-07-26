@@ -96,6 +96,8 @@ class LM_MLEM(object):
         # Was lambda in C++ but lambda is a reserved keyword in Python
         # TODO: We should be able to load previous results saved in a file
         result = Image(self.config_volume, init="ones")
+        # It must be initialized as zero as temporary values are sumed
+        next_result = Image(self.config_volume, init="zeros")
 
         for iter in range(first_iter, last_iter):
             logger.info(f"Iteration {str(iter)}")
@@ -103,8 +105,13 @@ class LM_MLEM(object):
             print(f"size of events: {str(len(self.events))}")
             skipped_events = 0
             # It must be initialized as zero as temporary values are sumed
-            # there
-            next_result = Image(self.config_volume, init="zeros")
+            next_result.values = self.xp.zeros(
+                (
+                    next_result.dim_in_voxels.x,
+                    next_result.dim_in_voxels.y,
+                    next_result.dim_in_voxels.z,
+                )
+            )
             for event in self.events:
                 try:
                     line = self.SM_line(iter, event)
