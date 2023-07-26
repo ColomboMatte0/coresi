@@ -82,6 +82,5 @@ mlem = LM_MLEM(
     config["sensitivity_file"] if "sensitivity_file" in config else None,
 )
 result = mlem.run(config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"])
-# image = mlem.SM_angular_thickness(events[0])
 
 logger.info(f"Took {time.time() - start} ms for MLEM")
