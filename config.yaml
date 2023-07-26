@@ -7,6 +7,10 @@ remove_out_of_range_energies: True
 # otherwise
 energy_range: [120, 150]
 
+# Supply a sensitivity file. Needs to have the same size as the number of
+# voxels in the volume
+# sensitivity_file: filename
+
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 # Up to 5 absorbers are implemented
 cameras:

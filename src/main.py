@@ -73,7 +73,14 @@ logger.info(f"Took {time.time() - start} ms to read the data")
 start = time.time()
 
 logger.info("Doing MLEM")
-mlem = LM_MLEM(config["lm_mlem"], config["volume"], cameras, events)
+mlem = LM_MLEM(
+    config["lm_mlem"],
+    config["volume"],
+    cameras,
+    events,
+    # Supply the sensitivity file if provided
+    config["sensitivity_file"] if "sensitivity_file" in config else None,
+)
 result = mlem.run(config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"])
 # image = mlem.SM_angular_thickness(events[0])
 

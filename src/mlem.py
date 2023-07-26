@@ -20,8 +20,12 @@ class LM_MLEM(object):
         config_volume: dict,
         cameras: list[Camera],
         events: list[Event],
+        sensitivity_file: str,
     ):
         super(LM_MLEM, self).__init__()
+
+        self.xp = array_module()
+
         self.cone_thickness = config_mlem["cone_thickness"]
 
         self.cameras = cameras
@@ -31,8 +35,9 @@ class LM_MLEM(object):
         self.config_volume = config_volume
         # TODO: Figure out whether using a sparse (CPU or GPU) matrix is worth it
         self.line = Image(self.config_volume)
-        # TODO: Read sensitivity from file
-        self.sensivity = Image(self.config_volume, init="ones")
+        self.sensitivity = Image(self.config_volume, init="ones")
+        if sensitivity_file is not None:
+            self.sensivity.values = self.xp.load(sensitivity_file)
 
         if config_mlem["cone_thickness"] == "angular":
             # Parameters related to Doppler broadening as a sum of two Gaussians
@@ -62,7 +67,6 @@ class LM_MLEM(object):
             logger.debug("Using parallel thickness")
             self.SM_line = self.SM_parallel_thickness
 
-        self.xp = array_module()
         # Skip the Gaussian above n_sigma * Gaussian std
 
         # Sample points along each volume dimension. use voxel size to center
@@ -116,7 +120,7 @@ class LM_MLEM(object):
                 forward_proj = self.xp.vdot(line.values, result.values)
                 next_result.values += line.values / forward_proj
 
-            result.values = result.values / self.sensivity.values * next_result.values
+            result.values = result.values / self.sensitivity.values * next_result.values
 
             if skipped_events > 0:
                 logger.warning(
