@@ -26,6 +26,8 @@ class LoadData(unittest.TestCase):
             n_events=1,
             E0=-1,
             cameras=cameras,
+            energy_range=config["energy_range"],
+            remove_out_of_range_energies=config["remove_out_of_range_energies"],
             start_position=26,
         )
         self.assertEqual(events[0].idx_V1, 0, "Wrong camera for V1")

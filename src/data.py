@@ -15,8 +15,8 @@ def read_data_file(
     E0: float,
     cameras: list[Camera],
     energy_range: list,
-    start_position: int = 0,
     remove_out_of_range_energies: bool = True,
+    start_position: int = 0,
 ) -> np.ndarray:
     events = []
     skipped_events = 0

@@ -26,6 +26,8 @@ class LoadData(unittest.TestCase):
             n_events=-1,
             E0=-1,
             cameras=cameras,
+            energy_range=config["energy_range"],
+            remove_out_of_range_energies=config["remove_out_of_range_energies"],
             start_position=14,
         )
 
@@ -36,6 +38,8 @@ class LoadData(unittest.TestCase):
             n_events=2,
             E0=-1,
             cameras=cameras,
+            energy_range=config["energy_range"],
+            remove_out_of_range_energies=config["remove_out_of_range_energies"],
             start_position=14,
         )
 
@@ -46,6 +50,8 @@ class LoadData(unittest.TestCase):
             n_events=1,
             E0=-1,
             cameras=cameras,
+            energy_range=config["energy_range"],
+            remove_out_of_range_energies=config["remove_out_of_range_energies"],
             start_position=0,
         )
 
@@ -66,6 +72,8 @@ class LoadData(unittest.TestCase):
             n_events=-1,
             E0=-1,
             cameras=cameras,
+            energy_range=config["energy_range"],
+            remove_out_of_range_energies=config["remove_out_of_range_energies"],
             start_position=0,
         )
         self.assertEqual(
