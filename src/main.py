@@ -8,7 +8,6 @@ import yaml
 
 from camera import setup_cameras
 from data import read_data_file
-from image import Image
 from mlem import LM_MLEM
 
 parser = argparse.ArgumentParser(description="CORESI")
