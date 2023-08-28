@@ -81,6 +81,7 @@ class Image:
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
+        plt.show()
 
     def read_file(self, file_name: str) -> None:
         self.values = self.xp.fromfile(file_name, dtype="double").reshape(
