@@ -112,21 +112,23 @@ class LM_MLEM(object):
                     next_result.dim_in_voxels.z,
                 )
             )
+            to_delete = []
             for event in self.events:
                 try:
                     line = self.SM_line(iter, event)
                 except ValueError as e:
                     # TODO: remove event from events for future iteratiosn
                     skipped_events += 1
-                    logger.warning(f"Skipping event {line.strip()} REASON: {e}")
+                    logger.warning(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we known we don't need to
                     # look at it anymore
-                    # TODO: check whether this works
-                    self.events.remove(event)
+                    to_delete.append(int(event.id) - 1)
                     continue
                 forward_proj = self.xp.vdot(line.values, result.values)
                 next_result.values += line.values / forward_proj
 
+            if len(to_delete) > 0:
+                self.events = self.xp.delete(self.events, to_delete)
             result.values = result.values / self.sensitivity.values * next_result.values
 
             if skipped_events > 0:
