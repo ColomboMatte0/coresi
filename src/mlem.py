@@ -103,7 +103,6 @@ class LM_MLEM(object):
             logger.info(f"Iteration {str(iter)}")
             # Temporary test
             print(f"size of events: {str(len(self.events))}")
-            skipped_events = 0
             # It must be initialized as zero as temporary values are sumed
             next_result.values = self.xp.zeros(
                 (
@@ -117,23 +116,21 @@ class LM_MLEM(object):
                 try:
                     line = self.SM_line(iter, event)
                 except ValueError as e:
-                    skipped_events += 1
                     logger.warning(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we known we don't need to
                     # look at it anymore
                     to_delete.append(int(event.id) - 1)
                     continue
+
                 forward_proj = self.xp.vdot(line.values, result.values)
                 next_result.values += line.values / forward_proj
 
             if len(to_delete) > 0:
                 self.events = self.xp.delete(self.events, to_delete)
-            result.values = result.values / self.sensitivity.values * next_result.values
-
-            if skipped_events > 0:
                 logger.warning(
-                    f"Skipped {str(skipped_events)} events when computing the system matrix at iteration {str(iter)}"
+                    f"Skipped {str(len(to_delete))} events when computing the system matrix at iteration {str(iter)}"
                 )
+            result.values = result.values / self.sensitivity.values * next_result.values
 
         return result
 
