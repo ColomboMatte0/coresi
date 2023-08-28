@@ -101,8 +101,6 @@ class LM_MLEM(object):
 
         for iter in range(first_iter, last_iter):
             logger.info(f"Iteration {str(iter)}")
-            # Temporary test
-            print(f"size of events: {str(len(self.events))}")
             # It must be initialized as zero as temporary values are sumed
             next_result.values = self.xp.zeros(
                 (
