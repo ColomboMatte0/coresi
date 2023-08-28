@@ -112,14 +112,14 @@ class LM_MLEM(object):
                 )
             )
             to_delete = []
-            for event in self.events:
+            for idx, event in enumerate(self.events):
                 try:
                     line = self.SM_line(iter, event)
                 except ValueError as e:
                     logger.warning(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we known we don't need to
                     # look at it anymore
-                    to_delete.append(int(event.id) - 1)
+                    to_delete.append(idx)
                     continue
 
                 forward_proj = self.xp.vdot(line.values, result.values)
