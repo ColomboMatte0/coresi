@@ -117,7 +117,6 @@ class LM_MLEM(object):
                 try:
                     line = self.SM_line(iter, event)
                 except ValueError as e:
-                    # TODO: remove event from events for future iteratiosn
                     skipped_events += 1
                     logger.warning(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we known we don't need to
