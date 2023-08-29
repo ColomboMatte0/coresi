@@ -11,9 +11,9 @@ from camera import setup_cameras
 from data import read_data_file
 from event import Event
 
-with open(
-    Path(os.path.dirname(os.path.realpath(__file__)) + "/test_config.yaml"), "r"
-) as fh:
+test_dir = Path(os.path.dirname(os.path.realpath(__file__)))
+
+with open(test_dir / "test_config.yaml", "r") as fh:
     config = yaml.safe_load(fh)
 
 cameras = setup_cameras(config["cameras"])
@@ -22,7 +22,7 @@ cameras = setup_cameras(config["cameras"])
 class LoadData(unittest.TestCase):
     def test_read_data_file(self):
         events = read_data_file(
-            Path(os.path.dirname(os.path.realpath(__file__)) + "/test.dat"),
+            test_dir / "test.dat",
             n_events=-1,
             E0=-1,
             cameras=cameras,
@@ -34,7 +34,7 @@ class LoadData(unittest.TestCase):
         self.assertEqual(len(events), 11, "Wrong number of events")
 
         events = read_data_file(
-            Path(os.path.dirname(os.path.realpath(__file__)) + "/test.dat"),
+            test_dir / "test.dat",
             n_events=2,
             E0=-1,
             cameras=cameras,
@@ -46,7 +46,7 @@ class LoadData(unittest.TestCase):
         self.assertEqual(len(events), 2, "Wrong number of events")
 
         events = read_data_file(
-            Path(os.path.dirname(os.path.realpath(__file__)) + "/test.dat"),
+            test_dir / "test.dat",
             n_events=1,
             E0=-1,
             cameras=cameras,
@@ -59,7 +59,8 @@ class LoadData(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             with open(
-                os.path.dirname(os.path.realpath(__file__)) + "/test.dat", "r"
+                test_dir / "test.dat",
+                "r",
             ) as data_fh:
                 for line_n, line in enumerate(data_fh):
                     if line_n == 13:
@@ -68,7 +69,7 @@ class LoadData(unittest.TestCase):
     def test_dat_data(self):
 
         events = read_data_file(
-            Path(os.path.dirname(os.path.realpath(__file__)) + "/test.dat"),
+            test_dir / "test.dat",
             n_events=-1,
             E0=-1,
             cameras=cameras,

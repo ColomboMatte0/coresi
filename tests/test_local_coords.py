@@ -11,18 +11,20 @@ from camera import DetectorType, setup_cameras
 from data import read_data_file
 from event import Event
 
-with open(
-    Path(os.path.dirname(os.path.realpath(__file__)) + "/test_config.yaml"), "r"
-) as fh:
+test_dir = Path(os.path.dirname(os.path.realpath(__file__)))
+
+with open(test_dir / "test_config.yaml", "r") as fh:
     config = yaml.safe_load(fh)
 
 cameras = setup_cameras(config["cameras"])
+
+test_dir = Path(os.path.dirname(os.path.realpath(__file__)))
 
 
 class LoadData(unittest.TestCase):
     def test_camera_index_and_norm(self):
         events = read_data_file(
-            Path(os.path.dirname(os.path.realpath(__file__)) + "/test.dat"),
+            test_dir / "test.dat",
             n_events=1,
             E0=-1,
             cameras=cameras,
@@ -85,7 +87,8 @@ class LoadData(unittest.TestCase):
 
         with self.assertRaises(ValueError) as cm:
             with open(
-                os.path.dirname(os.path.realpath(__file__)) + "/test.dat", "r"
+                test_dir / "test.dat",
+                "r",
             ) as data_fh:
                 for line_n, line in enumerate(data_fh):
                     if line_n == 25:
