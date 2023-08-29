@@ -1,4 +1,4 @@
-data_file: /home/lequertier/projects/coresi_git/CodeC++/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
+data_file: tests/test_mlem.dat
 data_type: 'MACACO'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
 E0: -1
@@ -6,6 +6,10 @@ remove_out_of_range_energies: True
 # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
 # otherwise
 energy_range: [120, 150]
+
+# Supply a sensitivity file. Needs to have the same size as the number of
+# voxels in the volume
+# sensitivity_file: filename
 
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 # Up to 5 absorbers are implemented
@@ -58,11 +62,23 @@ cameras:
 
   position_0:
     frame_origin: [0, 0, 0]
-    Ox: [1, 0, 0]     # parallel to scatterer edge
-    Oy: [0, 1, 0]     # parallel to scatterer edge
+    Ox: [1, 0, 0]    # parallel to scatterer edge
+    Oy: [0, 1, 0]    # parallel to scatterer edge
     Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
   position_1:
     frame_origin: [0, 0, 0]
-    Ox: [1, 0, 0]     # parallel to scatterer edge
-    Oy: [0, 0, -1]     # parallel to scatterer edge
+    Ox: [1, 0, 0]    # parallel to scatterer edge
+    Oy: [0, 0, -1]   # parallel to scatterer edge
     Oz: [0, 1, 0]    # orthogonal to the camera, tw the source
+
+volume:
+  volume_dimensions: [20, 20, 0.4] # In centimeters
+  n_voxels: [50, 50, 1]
+  volume_centre: [0, 0, 0]
+
+lm_mlem:
+  cone_thickness: 'angular' # angular or parallel
+  last_iter: 20
+  first_iter: 0
+  n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+  width_factor: 1 # Used to artificially modify the spread of the cone

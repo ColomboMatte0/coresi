@@ -128,6 +128,7 @@ class LM_MLEM(object):
                 logger.warning(
                     f"Skipped {str(len(to_delete))} events when computing the system matrix at iteration {str(iter)}"
                 )
+                self.n_skipped_events = len(to_delete)
             result.values = result.values / self.sensitivity.values * next_result.values
 
         return result
