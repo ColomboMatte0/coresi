@@ -37,7 +37,7 @@ class LM_MLEM(object):
         self.line = Image(self.config_volume)
         self.sensitivity = Image(self.config_volume, init="ones")
         if sensitivity_file is not None:
-            self.sensivity.values = self.xp.load(sensitivity_file)
+            self.sensitivity.values = self.xp.fromfile(sensitivity_file)
 
         if config_mlem["cone_thickness"] == "angular":
             # Parameters related to Doppler broadening as a sum of two Gaussians
