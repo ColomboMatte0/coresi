@@ -2,6 +2,7 @@ import sys
 from logging import getLogger
 
 import yaml
+from pathlib import Path
 
 from camera import Camera
 from event import Event
@@ -91,11 +92,38 @@ class LM_MLEM(object):
             self.x, self.y, self.z, sparse=True, indexing="ij"
         )
 
-    def run(self, last_iter: int, first_iter: int = 0):
+    def run(
+        self,
+        last_iter: int,
+        first_iter: int = 0,
+        save_every: int = 10,
+        checkpoint_dir: Path = Path("checkpoints"),
+    ):
         """docstring for run"""
         # Was lambda in C++ but lambda is a reserved keyword in Python
-        # TODO: We should be able to load previous results saved in a file
         result = Image(self.config_volume, init="ones")
+
+        # Load a checkpoint if necessary
+        if first_iter > 0:
+            try:
+                checkpoint = self.xp.load(
+                    checkpoint_dir / f"checkpoint.iter.{str(first_iter)}.npy"
+                )
+            except IOError as e:
+                logger.fatal(f"The checkpoint could not be loaded: {e}")
+                sys.exit(1)
+
+            if checkpoint.shape != result.values.shape:
+                logger.fatal(
+                    f"The checkpoint does not have the same shape as the volume. Volume is {str(result.values.shape)} and checkpoint is {str(checkpoint.shape)}"
+                )
+                sys.exit(1)
+
+            result.values = checkpoint
+            # Delete the checkpoint as we no longer use it and this takes quite a
+            # bit of memory
+            del checkpoint
+
         # It must be initialized as zero as temporary values are sumed
         next_result = Image(self.config_volume, init="zeros")
 
@@ -112,7 +140,13 @@ class LM_MLEM(object):
             to_delete = []
             for idx, event in enumerate(self.events):
                 try:
-                    line = self.SM_line(iter, event)
+                    # Compute the system matrix line.
+                    # iter - first_iter is a hacky trick to make SM_line believe that
+                    # the first iter is 0 even if this is not the case. this works
+                    # because the iter param is only used to check whether we need to
+                    # verify if the cone intersect the voxel i.e. if we are at the
+                    # first iteration
+                    line = self.SM_line(iter - first_iter, event)
                 except ValueError as e:
                     logger.warning(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we known we don't need to
@@ -129,7 +163,13 @@ class LM_MLEM(object):
                     f"Skipped {str(len(to_delete))} events when computing the system matrix at iteration {str(iter)}"
                 )
                 self.n_skipped_events = len(to_delete)
+
             result.values = result.values / self.sensitivity.values * next_result.values
+
+            if iter != first_iter and iter % save_every == 0:
+                self.xp.save(
+                    checkpoint_dir / f"checkpoint.iter.{str(iter)}", result.values
+                )
 
         return result
 

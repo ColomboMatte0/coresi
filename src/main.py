@@ -80,6 +80,15 @@ mlem = LM_MLEM(
     # Supply the sensitivity file if provided
     config["sensitivity_file"] if "sensitivity_file" in config else None,
 )
-result = mlem.run(config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"])
+
+checkpoint_dir = Path(config["lm_mlem"]["checkpoint_dir"])
+checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+result = mlem.run(
+    config["lm_mlem"]["last_iter"],
+    config["lm_mlem"]["first_iter"],
+    config["lm_mlem"]["save_every"],
+    checkpoint_dir,
+)
 
 logger.info(f"Took {time.time() - start} ms for MLEM")

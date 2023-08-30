@@ -80,5 +80,7 @@ lm_mlem:
   cone_thickness: 'angular' # angular or parallel
   last_iter: 20
   first_iter: 0
+  save_every: 10
+  checkpoint_dir: checkpoints
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
   width_factor: 1 # Used to artificially modify the spread of the cone
