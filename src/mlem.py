@@ -51,6 +51,7 @@ class LM_MLEM(object):
                 constants["doppler_broadening"]["sigma_beta_2"]
                 * config_mlem["width_factor"]
             )
+            # Skip the Gaussian above n_sigma * Gaussian std
             self.limit_sigma = (
                 max([self.sigma_beta_1, self.sigma_beta_2]) * config_mlem["n_sigma"]
             )
@@ -63,11 +64,10 @@ class LM_MLEM(object):
             self.sigma_beta = (
                 self.line.voxel_size.norm2() * config_mlem["width_factor"] / 2
             )
+            # Skip the Gaussian above n_sigma * Gaussian std
             self.limit_sigma = self.sigma_beta * config_mlem["n_sigma"]
             logger.debug("Using parallel thickness")
             self.SM_line = self.SM_parallel_thickness
-
-        # Skip the Gaussian above n_sigma * Gaussian std
 
         # Sample points along each volume dimension. use voxel size to center
         # the points on the voxels
