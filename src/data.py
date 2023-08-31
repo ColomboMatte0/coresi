@@ -17,7 +17,7 @@ def read_data_file(
     energy_range: list,
     remove_out_of_range_energies: bool = True,
     start_position: int = 0,
-) -> np.ndarray:
+) -> list[Event]:
     events = []
     skipped_events = 0
     with open(file_name, "r") as data_fh:
@@ -47,7 +47,7 @@ def read_data_file(
     if (n_filtered := n_events - len(events)) > 0:
         logger.warning(f"Skipped {str(n_filtered)} events not within the energy range")
 
-    return np.array(events)
+    return events
 
 
 def filter_bad_events(events: list[Event], energy_range: list) -> list[Event]:
