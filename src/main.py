@@ -79,6 +79,7 @@ mlem = LM_MLEM(
     events,
     # Supply the sensitivity file if provided
     config["sensitivity_file"] if "sensitivity_file" in config else None,
+    args.config.name.split(".")[0],
 )
 
 checkpoint_dir = Path(config["lm_mlem"]["checkpoint_dir"])

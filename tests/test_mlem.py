@@ -43,6 +43,7 @@ class MLEM(unittest.TestCase):
             events,
             # Supply the sensitivity file if provided
             config["sensitivity_file"] if "sensitivity_file" in config else None,
+            "test_config",
         )
         result = mlem.run(
             config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"]
@@ -73,6 +74,7 @@ class MLEM(unittest.TestCase):
             events,
             # Supply the sensitivity file if provided
             config["sensitivity_file"] if "sensitivity_file" in config else None,
+            "test_config",
         )
         result = mlem.run(
             config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"]

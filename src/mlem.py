@@ -22,6 +22,7 @@ class LM_MLEM(object):
         cameras: list[Camera],
         events: list[Event],
         sensitivity_file: str,
+        run_name: str,
     ):
         super(LM_MLEM, self).__init__()
 
@@ -31,6 +32,7 @@ class LM_MLEM(object):
 
         self.cameras = cameras
         self.events = events
+        self.run_name = run_name
         constants = self.read_constants("constants.yaml")
 
         self.config_volume = config_volume
@@ -109,7 +111,7 @@ class LM_MLEM(object):
         if first_iter > 0:
             try:
                 checkpoint = self.xp.load(
-                    checkpoint_dir / f"checkpoint.iter.{str(first_iter)}.npy"
+                    checkpoint_dir / f"{self.run_name}.iter.{str(first_iter)}.npy"
                 )
             except IOError as e:
                 logger.fatal(f"The checkpoint could not be loaded: {e}")
@@ -170,7 +172,7 @@ class LM_MLEM(object):
 
             if iter != first_iter and iter % save_every == 0:
                 self.xp.save(
-                    checkpoint_dir / f"checkpoint.iter.{str(iter)}", result.values
+                    checkpoint_dir / f"{self.run_name}.iter.{str(iter)}", result.values
                 )
 
         return result
