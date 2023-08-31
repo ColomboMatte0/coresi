@@ -154,7 +154,7 @@ class LM_MLEM(object):
                     # first iteration
                     line = self.SM_line(iter - first_iter, event)
                 except ValueError as e:
-                    logger.warning(f"Skipping event {event.id} REASON: {e}")
+                    logger.debug(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we known we don't need to
                     # look at it anymore
                     to_delete.append(idx)

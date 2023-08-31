@@ -30,7 +30,7 @@ def read_data_file(
                     events.append(event)
                 except ValueError as e:
                     skipped_events += 1
-                    logger.warning(f"Skipping event {line.strip()} REASON: {e}")
+                    logger.debug(f"Skipping event {line.strip()} REASON: {e}")
                     continue
             if n_events != -1 and line_n >= n_events + start_position - 1:
                 break
