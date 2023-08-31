@@ -27,6 +27,8 @@ class LM_MLEM(object):
         super(LM_MLEM, self).__init__()
 
         self.xp = array_module()
+        # Inform the user on whether we are using numpy or cupy
+        logger.info(f"Using {self.xp.__name__}")
 
         self.cone_thickness = config_mlem["cone_thickness"]
 
