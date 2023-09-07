@@ -133,7 +133,7 @@ class LM_MLEM(object):
         # It must be initialized as zero as temporary values are sumed
         next_result = Image(self.config_volume, init="zeros")
 
-        for iter in range(first_iter, last_iter):
+        for iter in range(first_iter, last_iter + 1):
             logger.info(f"Iteration {str(iter)}")
             # It must be initialized as zero as temporary values are sumed
             next_result.values = self.xp.zeros(
