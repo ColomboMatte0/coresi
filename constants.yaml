@@ -1,3 +1,6 @@
+# TODO: This depends on the material (Silicium currently). These values were
+# computed bu former students, Enrique or Yuemeng. Add new keys if we add other
+# materials
 doppler_broadening: 
   a1: 0.3773
   a2: 0.1443
