@@ -172,7 +172,7 @@ class LM_MLEM(object):
 
             result.values = result.values / self.sensitivity.values * next_result.values
 
-            if iter % save_every == 0:
+            if iter % save_every == 0 or iter == last_iter:
                 self.xp.save(
                     checkpoint_dir / f"{self.run_name}.iter.{str(iter)}", result.values
                 )
