@@ -162,7 +162,12 @@ class LM_MLEM(object):
                     continue
 
                 forward_proj = self.xp.vdot(line.values, result.values)
-                next_result.values += line.values / forward_proj
+
+                # Iteration 0 is a simple backprojection
+                if iter == 0:
+                    next_result.values += line.values
+                else:
+                    next_result.values += line.values / forward_proj
 
             if len(to_delete) > 0:
                 self.events = self.xp.delete(self.events, to_delete)
@@ -171,7 +176,11 @@ class LM_MLEM(object):
                 )
                 self.n_skipped_events = len(to_delete)
 
-            result.values = result.values / self.sensitivity.values * next_result.values
+            # Do not take sensitivity into account at iteration 0
+            if iter == 0:
+                result.values = next_result.values
+            else:
+                result.values = result.values / self.sensitivity.values * next_result.values
 
             if iter % save_every == 0 or iter == last_iter:
                 self.xp.save(
