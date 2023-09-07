@@ -24,7 +24,7 @@ test_dir = Path(os.path.dirname(os.path.realpath(__file__)))
 class LoadData(unittest.TestCase):
     def test_camera_index_and_norm(self):
         events = read_data_file(
-            test_dir / "test.dat",
+            config["data_file"],
             n_events=1,
             E0=-1,
             cameras=cameras,
@@ -87,7 +87,7 @@ class LoadData(unittest.TestCase):
 
         with self.assertRaises(ValueError) as cm:
             with open(
-                test_dir / "test.dat",
+                config["data_file"],
                 "r",
             ) as data_fh:
                 for line_n, line in enumerate(data_fh):

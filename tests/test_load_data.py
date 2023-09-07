@@ -22,31 +22,31 @@ cameras = setup_cameras(config["cameras"])
 class LoadData(unittest.TestCase):
     def test_read_data_file(self):
         events = read_data_file(
-            test_dir / "test.dat",
+            config["data_file"],
             n_events=-1,
             E0=-1,
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
-            start_position=14,
+            start_position=0,
         )
 
-        self.assertEqual(len(events), 11, "Wrong number of events")
+        self.assertEqual(len(events), 198, "Wrong number of events")
 
         events = read_data_file(
-            test_dir / "test.dat",
+            config["data_file"],
             n_events=2,
             E0=-1,
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
-            start_position=14,
+            start_position=24,
         )
 
         self.assertEqual(len(events), 2, "Wrong number of events")
 
         events = read_data_file(
-            test_dir / "test.dat",
+            config["data_file"],
             n_events=1,
             E0=-1,
             cameras=cameras,
@@ -59,7 +59,7 @@ class LoadData(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             with open(
-                test_dir / "test.dat",
+                config["data_file"],
                 "r",
             ) as data_fh:
                 for line_n, line in enumerate(data_fh):
@@ -67,10 +67,9 @@ class LoadData(unittest.TestCase):
                         Event(line_n, line, -1)
 
     def test_dat_data(self):
-
         events = read_data_file(
-            test_dir / "test.dat",
-            n_events=-1,
+            config["data_file"],
+            n_events=26,
             E0=-1,
             cameras=cameras,
             energy_range=config["energy_range"],
