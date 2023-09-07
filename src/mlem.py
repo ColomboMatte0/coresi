@@ -112,8 +112,9 @@ class LM_MLEM(object):
         # Load a checkpoint if necessary
         if first_iter > 0:
             try:
+                logger.info(f"The first iteration is set to {str(first_iter)}, trying to load {checkpoint_dir / self.run_name}.iter.{str(first_iter - 1)}.npy")
                 checkpoint = self.xp.load(
-                    checkpoint_dir / f"{self.run_name}.iter.{str(first_iter)}.npy"
+                    checkpoint_dir / f"{self.run_name}.iter.{str(first_iter - 1)}.npy"
                 )
             except IOError as e:
                 logger.fatal(f"The checkpoint could not be loaded: {e}")
@@ -121,7 +122,7 @@ class LM_MLEM(object):
 
             if checkpoint.shape != result.values.shape:
                 logger.fatal(
-                    f"The checkpoint does not have the same shape as the volume. Volume is {str(result.values.shape)} and checkpoint is {str(checkpoint.shape)}"
+                    f"The checkpointed volume does not have the same shape as the current volume. Current volume is {str(result.values.shape)} and checkpointed volume  is {str(checkpoint.shape)}"
                 )
                 sys.exit(1)
 
