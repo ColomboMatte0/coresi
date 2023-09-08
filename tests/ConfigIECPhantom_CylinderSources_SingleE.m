@@ -19,7 +19,7 @@ SENSITIVITY = 'OFF' ;       % 'ON', 'OFF'. Recommended MODEL 'cos0rho0' when sen
 SENSITIVITY_FILE = '/home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw';
 %%   Data selection
 SAMPLES =1;                            % for statistical studies
-COUNTS_PER_SAMPLE = 1606;
+COUNTS_PER_SAMPLE = 2000;
 %20000       % nb of events for 7 point source
 PRESELECT=1;                           % COUNTS_PER_SAMPLE is:
                                        % if 0, nb of detected events

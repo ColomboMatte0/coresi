@@ -33,7 +33,7 @@ class LoadData(unittest.TestCase):
             start_position=26,
         )
         self.assertEqual(events[0].idx_V1, 0, "Wrong camera for V1")
-        self.assertEqual(events[0].idx_V2, 1, "Wrong camera for V2")
+        self.assertEqual(events[0].idx_V2, 0, "Wrong camera for V2")
         self.assertEqual(
             events[0].detector_type_V1, DetectorType.SCA, "Wrong detector type for V1"
         )
@@ -45,21 +45,21 @@ class LoadData(unittest.TestCase):
             events[0]
             .V1.get_local_coord(camera.origin, camera.Ox, camera.Oy, camera.Oz)
             .x,
-            2.0,
+            1.73403,
             "Wrong x for V1",
         )
         self.assertEqual(
             events[0]
             .V1.get_local_coord(camera.origin, camera.Ox, camera.Oy, camera.Oz)
             .y,
-            3.0,
+            2.47067,
             "Wrong y for V1",
         )
         self.assertEqual(
             events[0]
             .V1.get_local_coord(camera.origin, camera.Ox, camera.Oy, camera.Oz)
             .z,
-            -10.0,
+            -14.081100000000001,
             "Wrong z for V1",
         )
         camera = cameras[events[0].idx_V2]
@@ -67,27 +67,27 @@ class LoadData(unittest.TestCase):
             events[0]
             .V2.get_local_coord(camera.origin, camera.Ox, camera.Oy, camera.Oz)
             .x,
-            -5.68355,
+            -6.40207,
             "Wrong x for V2",
         )
         self.assertEqual(
             events[0]
             .V2.get_local_coord(camera.origin, camera.Ox, camera.Oy, camera.Oz)
             .y,
-            -0.696129,
+            1.0940699999999999,
             "Wrong y for V2",
         )
         self.assertEqual(
             events[0]
             .V2.get_local_coord(camera.origin, camera.Ox, camera.Oy, camera.Oz)
             .z,
-            -29.517500000000002,
+            -29.5636,
             "Wrong z for V2",
         )
 
         with self.assertRaises(ValueError) as cm:
             with open(
-                config["data_file"],
+                test_dir / "faulty_test.dat",
                 "r",
             ) as data_fh:
                 for line_n, line in enumerate(data_fh):

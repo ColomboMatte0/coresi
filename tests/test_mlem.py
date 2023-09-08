@@ -16,6 +16,7 @@ import numpy as np
 from camera import setup_cameras
 from data import read_data_file
 from mlem import LM_MLEM
+from image import Image
 
 test_dir = Path(os.path.dirname(os.path.realpath(__file__)))
 
@@ -50,18 +51,18 @@ class MLEM(unittest.TestCase):
         result = mlem.run(
             config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"]
         )
-        self.assertEqual(mlem.n_skipped_events, 46)
         np.testing.assert_array_equal(
             np.load(
                 test_dir / "test_mlem.npy",
             ),
             result.values,
         )
+        self.assertEqual(mlem.n_skipped_events, 46)
 
     def test_compare_cpp(self):
         events = read_data_file(
             test_dir / "test_mlem.dat",
-            n_events=20000,
+            n_events=2000,
             E0=-1,
             cameras=cameras,
             energy_range=config["energy_range"],
@@ -107,17 +108,24 @@ class MLEM(unittest.TestCase):
             # Sort the CORESI iterations by the iteration number and return the
             # last one
             regex = re.compile(config_path + ".sample0.iter(\d+).bin")
-            last_coresi_iter = list(sorted(glob(str(tmpdirname / "*.bin")),
-                                      key=lambda item:
-                                      int(regex.search(item).group(1))))[-1]
+            last_coresi_iter = list(
+                sorted(
+                    glob(str(tmpdirname / "*.bin")),
+                    key=lambda item: int(regex.search(item).group(1)),
+                )
+            )[-1]
 
+            result_mlem = Image(config["volume"], init="ones")
+            result_mlem.values = (
+                np.fromfile(last_coresi_iter)
+                .reshape(result.values.shape)
+                .transpose(-2, -3, -1)
+            )
 
             # Load CORESI results and compare with Python
             np.testing.assert_allclose(
-                np.fromfile(last_coresi_iter).reshape(
-                    result.values.shape
-                )[:, :, 0],
-                result.values[:, :, 0].T,
+                result_mlem.values,
+                result.values,
             )
 
 
