@@ -1,11 +1,17 @@
 data_file: tests/test_mlem.dat
 data_type: 'MACACO'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
-E0: 140
+E0: [140, 245, 364, 511]
+#E0: [140]
 remove_out_of_range_energies: False
 # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
 # otherwise
 energy_range: [120, 150]
+# Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+# tecteurs.
+# (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+# des détecteurs)
+energy_threshold: 5
 
 # Supply a sensitivity file. Needs to have the same size as the number of
 # voxels in the volume
@@ -18,6 +24,8 @@ cameras:
     # Cameras scatterer have the same characteristics besides their positions
   common_attributes:
     n_sca_layers: 7
+    sca_material: Si
+    abs_material: BGO
     sca_layer_0:
       center: [0, 0, -10]
       size: [9.0, 9.0, 0.2]
@@ -64,10 +72,11 @@ volume:
   volume_centre: [0, 0, 0]
 
 lm_mlem:
-  cone_thickness: 'angular' # angular or parallel
-  last_iter: 20
+  cone_thickness: 'parallel' # angular or parallel
+  model: 'cos0rho0'
+  last_iter: 0
   first_iter: 0
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
   width_factor: 1 # Used to artificially modify the spread of the cone
   checkpoint_dir: checkpoints
-  save_every: 2
+  save_every: 76

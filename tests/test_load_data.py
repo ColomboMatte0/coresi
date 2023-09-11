@@ -24,7 +24,7 @@ class LoadData(unittest.TestCase):
         events = read_data_file(
             config["data_file"],
             n_events=-1,
-            E0=-1,
+            E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
@@ -36,7 +36,7 @@ class LoadData(unittest.TestCase):
         events = read_data_file(
             config["data_file"],
             n_events=2,
-            E0=-1,
+            E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
@@ -48,7 +48,7 @@ class LoadData(unittest.TestCase):
         events = read_data_file(
             config["data_file"],
             n_events=1,
-            E0=-1,
+            E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
@@ -70,7 +70,7 @@ class LoadData(unittest.TestCase):
         events = read_data_file(
             config["data_file"],
             n_events=26,
-            E0=-1,
+            E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],

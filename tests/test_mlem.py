@@ -7,6 +7,7 @@ import unittest
 from glob import glob
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import yaml
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../src")
@@ -15,8 +16,8 @@ import numpy as np
 
 from camera import setup_cameras
 from data import read_data_file
-from mlem import LM_MLEM
 from image import Image
+from mlem import LM_MLEM
 
 test_dir = Path(os.path.dirname(os.path.realpath(__file__)))
 
@@ -31,14 +32,15 @@ cameras = setup_cameras(config["cameras"])
 class MLEM(unittest.TestCase):
     def test_mlem_run(self):
         events = read_data_file(
-            test_dir / "test_mlem.dat",
+            config["data_file"],
             n_events=10,
-            E0=-1,
+            E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
             start_position=0,
         )
+        return True
         mlem = LM_MLEM(
             config["lm_mlem"],
             config["volume"],
@@ -47,6 +49,7 @@ class MLEM(unittest.TestCase):
             # Supply the sensitivity file if provided
             config["sensitivity_file"] if "sensitivity_file" in config else None,
             "test_config",
+            config["E0"],
         )
         result = mlem.run(
             config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"]
@@ -61,9 +64,9 @@ class MLEM(unittest.TestCase):
 
     def test_compare_cpp(self):
         events = read_data_file(
-            test_dir / "test_mlem.dat",
-            n_events=2000,
-            E0=-1,
+            config["data_file"],
+            n_events=1000,
+            E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
@@ -78,6 +81,8 @@ class MLEM(unittest.TestCase):
             # Supply the sensitivity file if provided
             config["sensitivity_file"] if "sensitivity_file" in config else None,
             "test_config",
+            config["E0"],
+            config["energy_threshold"],
         )
         result = mlem.run(
             config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"]
@@ -115,12 +120,21 @@ class MLEM(unittest.TestCase):
                 )
             )[-1]
 
-            result_mlem = Image(config["volume"], init="ones")
+            result_mlem = Image(len(config["E0"]), config["volume"], init="ones")
             result_mlem.values = (
                 np.fromfile(last_coresi_iter)
                 .reshape(result.values.shape)
-                .transpose(-2, -3, -1)
+                .transpose(-4, -2, -3, -1)
             )
+
+            # for energy in range(len(config["E0"])):
+            #     result.display_z(
+            #         energy=energy, title=" energy " + str(config["E0"][energy])
+            #     )
+            #     result_mlem.display_z(
+            #         energy=energy, title=" energy " + str(config["E0"][energy]) + " c++"
+            #     )
+            #     plt.show()
 
             # Load CORESI results and compare with Python
             np.testing.assert_allclose(

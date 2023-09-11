@@ -1,15 +1,21 @@
-data_file: /home/vincent/Documents/Postdoc/coresi/CodeC++/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
+data_file: /home/lequertier/projects/coresi_git/CodeC++/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
 data_type: 'MACACO'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
-E0: -1
-remove_out_of_range_energies: True
+E0: [140]
+
+# Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+# tecteurs.
+# (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+# des détecteurs)
+energy_threshold: 5
+remove_out_of_range_energies: False
 # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
 # otherwise
 energy_range: [120, 150]
 
 # Supply a sensitivity file. Needs to have the same size as the number of
 # voxels in the volume
-sensitivity_file: /home/vincent/Documents/Postdoc/coresi/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
+# sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
 
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 # Up to 5 absorbers are implemented
@@ -18,6 +24,8 @@ cameras:
     # Cameras scatterer have the same characteristics besides their positions
   common_attributes:
     n_sca_layers: 7
+    sca_material: Si
+    abs_material: Si
     sca_layer_0:
       center: [0, 0, -10]
       size: [9.0, 9.0, 0.2]
@@ -73,12 +81,13 @@ cameras:
 
 volume:
   volume_dimensions: [20, 20, 0.4] # In centimeters
-  n_voxels: [50, 50, 1]
+  n_voxels: [100, 100, 20]
   volume_centre: [0, 0, 0]
 
 lm_mlem:
   cone_thickness: 'angular' # angular or parallel
-  last_iter: 5
+  model: 'cos0rho2'
+  last_iter: 2
   first_iter: 0
   save_every: 76
   checkpoint_dir: checkpoints

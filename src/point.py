@@ -8,8 +8,7 @@ class Point(np.ndarray):
         """
         :param cls:
         """
-        obj = np.asarray([x, y, z]).view(cls)
-        return obj
+        return np.asarray([x, y, z]).view(cls)
 
     @property
     def x(self) -> float:
@@ -34,6 +33,9 @@ class Point(np.ndarray):
     @z.setter
     def z(self, value: float) -> None:
         self[2] = value
+
+    def __str__(self) -> str:
+        return f"x: {self.x}, y: {self.y}, z: {self.z}"
 
     def normalized(self) -> "Point":
         """Normalize the point in place and return it"""

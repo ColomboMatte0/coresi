@@ -2,12 +2,14 @@ from math import sqrt
 
 import numpy as np
 
-from camera import Camera
+from camera import Camera, DetectorType
 from point import Point
 
 
 class Event(object):
-    def __init__(self, line_idx: int, line: str, E0: float, format: str = "GATE"):
+    def __init__(
+        self, line_idx: int, line: str, E0: list, format: str = "GATE", tol: float = 1e1
+    ):
         """
         :param int line_idx: Used to store the id of the line for debugging
         :param str line: The event line
@@ -17,8 +19,15 @@ class Event(object):
         :raises ValueError: If the computed beta of the event is faulty
         """
         super(Event, self).__init__()
-        self.E0 = E0
+        self.source_E0 = E0
+        self.n_energies = len(E0)
+        # Keep track of valid energies if spectral
+        # This variable hold the xsection for the second hit. This is also
+        # used as a pseudo boolean flag to skip incompatible energies
+        # TODO: rename
+        self.xsection = np.repeat(-1.0, self.n_energies)
         self.id = str(line_idx)
+        self.tol = tol
         if format == "GATE":
             self.read_gate_dat_file(line)
 
@@ -42,23 +51,25 @@ class Event(object):
         # Eg is the energy of the scattered gama caught in an absorber
         self.Eg = e2
 
+        # Compute E0 if it's not supplied in the configuration file
+        if self.source_E0 == [-1] or len(self.source_E0) > 1:
+            self.E0 = self.Ee + self.Eg
+            self.known_E0 = False
+        else:
+            self.E0 = self.source_E0[0]
+            self.known_E0 = True
+
         # Apply the Compton formula
         # https://en.wikipedia.org/wiki/Compton_scattering
         # 511 is the electron mass
-        self.cosbeta = 1.0 - self.Ee * 511.0 / (self.Eg * (self.Eg + self.Ee))
+        self.cosbeta = 1.0 - self.Ee * 511.0 / (self.E0 * (self.E0 - self.Ee))
         if self.cosbeta < -1 or self.cosbeta > 1:
             raise ValueError("Invalid cosbeta")
         self.sinbeta = sqrt(1 - self.cosbeta**2)
         self.beta = np.arccos(self.cosbeta)
 
-        # Compute E0 if it's not supplied in the configuration file
-        if self.E0 == -1:
-            self.E0 = self.Ee + self.Eg
-
-        # The K refers to the Klein-Nishima formula used for differential cross-section
-        # https://en.wikipedia.org/wiki/Klein%E2%80%93Nishina_formula
-        self.p = self.Eg / self.E0
-        self.K = self.p**2 * 0.5 * (self.p + (1.0 / self.p) - 1.0 + self.cosbeta**2)
+        self.energy_bin = self.get_position_energy(self.E0, self.tol)
+        self.xsection[0 : self.energy_bin] = 0.0
 
     def set_camera_index(self, cameras: list[Camera]) -> None:
         """Set the index of the camera where the event has occured"""
@@ -72,10 +83,16 @@ class Event(object):
             if where[0] is True:
                 # return whether the hit is in an absorber or a scatter and its
                 # index
-                self.idx_V1, self.detector_type_V1, self.layer_idx_V1 = (
+                (
+                    self.idx_V1,
+                    self.detector_type_V1,
+                    self.layer_idx_V1,
+                    self.normal_to_layer_V1,
+                ) = (
                     idx,
                     where[1],
                     where[2],
+                    where[3],
                 )
                 found = True
                 break
@@ -93,10 +110,16 @@ class Event(object):
             if where[0] is True:
                 # return whether the hit is in an absorber or a scatter and its
                 # index
-                self.idx_V2, self.detector_type_V2, self.layer_idx_V2 = (
+                (
+                    self.idx_V2,
+                    self.detector_type_V2,
+                    self.layer_idx_V2,
+                    self.normal_to_layer_V2,
+                ) = (
                     idx,
                     where[1],
                     where[2],
+                    where[3],
                 )
                 found = True
                 break
@@ -105,26 +128,69 @@ class Event(object):
         if not found:
             raise (ValueError("V2 does not belong in a known camera"))
 
-    def is_hit_in_camera(self, V: Point, camera: Camera) -> tuple[bool, str, int]:
+    def is_hit_in_camera(
+        self, V: Point, camera: Camera
+    ) -> tuple[bool, DetectorType, int, Point]:
         """Go through the components of the camera and test if the point is
         contained in one of them. If found return True, the detector type and
         the idx of layer within the detector
         """
         V_local = V.get_local_coord(camera.origin, camera.Ox, camera.Oy, camera.Oz)
 
-        # Index is the layer number
-        index = list(range(0, len(camera.sca_layers))) + list(
-            range(0, len(camera.abs_layers))
-        )
+        # Index is the layer number. It needs to be unique over all the layer
+        # list as V1 and V2 may be in an abritrary layer of any detector.
+        # Especially important since backscattering odds increases with low
+        # energies
+        index = list(range(0, len(camera.sca_layers + camera.abs_layers)))
+        n_layer_scatterer = len(camera.sca_layers)
         for idx, layer in zip(index, camera.sca_layers + camera.abs_layers):
+            if layer is None:
+                continue
             if (
                 abs(V_local.x - layer.center.x) <= layer.dim.x / 2
                 and abs(V_local.y - layer.center.y) <= layer.dim.y / 2
                 and abs(V_local.z - layer.center.z) <= layer.dim.z / 2
             ):
-                return True, layer.detector_type, idx
+                # The normal changes according to the obsorber position.
+                # the index of the absorber informs us about the relativre
+                # absorber position
+                if layer.detector_type == DetectorType.SCA or (
+                    layer.detector_type == DetectorType.ABS
+                    and (idx - n_layer_scatterer) == 0
+                ):
+                    return True, layer.detector_type, idx, camera.Oz
+                elif (
+                    layer.detector_type == DetectorType.ABS
+                    and (idx - n_layer_scatterer) == 1
+                ):
+                    return True, layer.detector_type, idx, -camera.Ox
+                elif (
+                    layer.detector_type == DetectorType.ABS
+                    and (idx - n_layer_scatterer) == 2
+                ):
+                    return True, layer.detector_type, idx, camera.Ox
+                elif (
+                    layer.detector_type == DetectorType.ABS
+                    and (idx - n_layer_scatterer) == 3
+                ):
+                    return True, layer.detector_type, idx, -camera.Oy
+                elif (
+                    layer.detector_type == DetectorType.ABS
+                    and (idx - n_layer_scatterer) == 4
+                ):
+                    return True, layer.detector_type, idx, camera.Oy
 
-        return False, "", -1
+        return False, "", -1, Point(0, 0, 0)
+
+    def get_position_energy(self, E0, tol=1e-5) -> int:
+        """The goal is identify the energy bin of the measured energy"""
+        for idx, energy in enumerate(self.source_E0, start=1):
+            if E0 <= energy + tol:
+                return idx - 1
+
+        # If E1 + E2 is larger than the maximum energy considered in the
+        # configuration
+        return self.n_energies - 1
 
     def __str__(self):
         return str(vars(self))

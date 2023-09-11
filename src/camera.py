@@ -1,16 +1,26 @@
+import sys
 from enum import StrEnum
 from logging import getLogger
 from typing import Union
 
+import yaml
+
+from gpuoptional import array_module
 from point import Point
 
 logger = getLogger("__main__." + __name__)
+typing = array_module()._typing
 
 
 class DetectorType(StrEnum):
-
     SCA = "scatterer"
     ABS = "absorber"
+
+
+class Material(StrEnum):
+    Silicium = "Si"
+    BismuthGermaniumOxide = "BGO"
+    LanthanumBromide = "LaBr3"
 
 
 class Camera(object):
@@ -18,9 +28,26 @@ class Camera(object):
 
     def __init__(self, attrs: dict, position: dict):
         super(Camera, self).__init__()
+
+        self.xp = array_module()
+
         self.sca_layers = self.setup_scatterers(attrs)
+        # There are cases where a scatterer or absorber might be composed of
+        # layers of multiple materials. This is not handled currently.
+        self.sca_material = Material(attrs["sca_material"])
+        self.avogadro, self.m_e, self.r_e = self.get_physics_constants()
+        constants_material_sca = self.read_constants_material(self.sca_material)
+        self.sca_nist = self.xp.array(constants_material_sca.pop("NIST"))
+        # effective density of electrons, number of electrons per unit mass
+        self.sca_n_eff = self.get_n_eff(**constants_material_sca)
+        self.sca_density = constants_material_sca["density"]
         logger.debug("sca layers list" + str([str(layer) for layer in self.sca_layers]))
         self.abs_layers = self.setup_absorbers(attrs)
+        self.abs_material = Material(attrs["abs_material"])
+        constants_material_abs = self.read_constants_material(self.abs_material)
+        self.abs_nist = self.xp.array(constants_material_abs.pop("NIST"))
+        self.abs_n_eff = self.get_n_eff(**constants_material_abs)
+        self.abs_density = constants_material_abs["density"]
         logger.debug("abs layers list" + str([str(layer) for layer in self.abs_layers]))
 
         # Define the center of the scatterer (as if the layers would contained in a box)
@@ -57,7 +84,7 @@ class Camera(object):
         return list(
             sorted(
                 [
-                    Layer(attrs[f"sca_layer_{idx}"], DetectorType.SCA)
+                    Layer(attrs[f"sca_layer_{idx}"], idx, DetectorType.SCA)
                     for idx in range(self.n_sca_layers)
                 ],
                 key=lambda layer: layer.center.z,
@@ -78,9 +105,111 @@ class Camera(object):
             if attrs[f"abs_layer_{idx}"] is None:
                 abs_layers.append(None)
             else:
-                abs_layers.append(Layer(attrs[f"abs_layer_{idx}"], DetectorType.ABS))
+                abs_layers.append(
+                    Layer(attrs[f"abs_layer_{idx}"], idx, DetectorType.ABS)
+                )
 
         return abs_layers
+
+    def get_n_eff(self, eff: float, density: float, moll_mass: float) -> float:
+        """effective number density of electrons in mol*cm^-3"""
+        return eff * density * self.avogadro / moll_mass
+
+    def read_constants_material(self, material: Material):
+        """docstring for read_constants_material"""
+        try:
+            with open("constants.yaml", "r") as fh:
+                return yaml.safe_load(fh)["materials"][material]
+        except (IOError, KeyError) as e:
+            logger.fatal(f"Failed to load constants for material {material}: {e}")
+            sys.exit(1)
+
+    def get_compton_diff_xsection(self, energy: int, cosbeta):
+        P = 1.0 / (1.0 + (energy / self.m_e) * (1 - (cosbeta)))
+        # ENRIQUE: Why avogadro number is involved, and issue with the units
+        # compared to regular KN formula and Enrique's thesis?
+        return (
+            (self.xp.power(self.r_e, 2) / 2.0)
+            * self.xp.power(P, 2)
+            * (P + 1.0 / P - 1.0 + self.xp.power(cosbeta, 2))
+        )
+
+    def get_photo_diff_xsection(
+        self, energy: int, detector_type: DetectorType
+    ) -> float:
+        table_index, nist_table = self.get_table_and_index(energy, detector_type)
+        return nist_table[table_index][2] + (
+            nist_table[table_index + 1][2] - nist_table[table_index][2]
+        ) * ((energy / 1000) - nist_table[table_index][0]) / (
+            nist_table[table_index + 1][0] - nist_table[table_index][0]
+        )
+
+    def get_pair_diff_xsection(self, energy: int, detector_type: DetectorType) -> float:
+        table_index, nist_table = self.get_table_and_index(energy, detector_type)
+        if energy < 1022:
+            return 0
+        return nist_table[table_index][3] + (
+            nist_table[table_index + 1][3] - nist_table[table_index][3]
+        ) * ((energy / 1000) - nist_table[table_index][0]) / (
+            nist_table[table_index + 1][0] - nist_table[table_index][0]
+        )
+
+    def get_total_diff_xsection(
+        self, energy: int, detector_type: DetectorType
+    ) -> float:
+        table_index, nist_table = self.get_table_and_index(energy, detector_type)
+        return nist_table[table_index][4] + (
+            nist_table[table_index + 1][4] - nist_table[table_index][4]
+        ) * ((energy / 1000) - nist_table[table_index][0]) / (
+            nist_table[table_index + 1][0] - nist_table[table_index][0]
+        )
+
+    def get_table_and_index(
+        self, energy: float, detector_type: DetectorType
+    ) -> tuple[int, typing.ArrayLike]:
+        # Convert to MeV
+        energy /= 1000
+        if detector_type == DetectorType.SCA:
+            if energy < self.sca_nist[0][0]:
+                logger.fatal(
+                    f"Table index energy of {str(energy)} below minimum in NIST table"
+                )
+                sys.exit(1)
+            elif energy > self.sca_nist[65][0]:
+                logger.fatal(
+                    f"Table index energy of {str(energy)} above maximum in NIST table = {str(self.sca_nist[65][0])}"
+                )
+                sys.exit(1)
+                return 1
+            for idx, nist in enumerate(self.sca_nist[:, 0]):
+                if nist > energy:
+                    return idx - 1, self.sca_nist
+            return 1, self.sca_nist
+        else:
+            if energy < self.abs_nist[0][0]:
+                logger.fatal(
+                    f"Table index energy of {str(energy)} below minimum in NIST table"
+                )
+                sys.exit(1)
+            elif energy > self.abs_nist[65][0]:
+                logger.fatal(
+                    f"Table index energy of {str(energy)} above maximum in NIST table = {str(self.abs_nist[65][0])}"
+                )
+                return 1, self.abs_nist
+            for idx, nist in enumerate(self.abs_nist[:, 0]):
+                if nist > energy:
+                    return idx - 1, self.abs_nist
+            return 1, self.abs_nist
+
+    @staticmethod
+    def get_physics_constants() -> tuple[float, float, float]:
+        try:
+            with open("constants.yaml", "r") as fh:
+                data = yaml.safe_load(fh)
+                return data["avogadro"], data["m_e"], data["r_e"]
+        except (IOError, KeyError) as e:
+            logger.fatal(f"Failed to load avogadro: {e}")
+            sys.exit(1)
 
 
 def setup_cameras(config_cameras: dict) -> list[Camera]:
@@ -101,12 +230,20 @@ class Layer(object):
     its center and its type. Keep track of the type for the events containement
     tests."""
 
-    def __init__(self, attrs: dict, detector_type: DetectorType):
+    def __init__(self, attrs: dict, idx: int, detector_type: DetectorType):
         super(Layer, self).__init__()
         # Center is the z axis because scaterers are aligned in x and y
         self.center = Point(*attrs["center"])
         self.dim = Point(*attrs["size"])
         self.detector_type = detector_type
+        if self.detector_type == DetectorType.SCA or (
+            self.detector_type == DetectorType.ABS and idx == 0
+        ):
+            self.thickness = self.dim.z
+        elif idx in [1, 2]:
+            self.thickness = self.dim.x
+        elif idx in [3, 4]:
+            self.thickness = self.dim.y
 
     def __str__(self) -> str:
         return f"center: {self.center}, dim: {self.dim}"

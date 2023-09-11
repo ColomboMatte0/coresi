@@ -22,6 +22,7 @@ class TestPoint(unittest.TestCase):
 
     def test_mul(self):
         a = Point(1, 2, 3)
+        print(a)
         b = Point(3, 4, 5)
         np.testing.assert_array_equal(a * 2, Point(2, 4, 6)),
         np.testing.assert_array_equal(a**2, Point(1, 4, 9)),

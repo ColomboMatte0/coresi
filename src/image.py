@@ -8,7 +8,7 @@ from point import Point
 class Image:
     """docstring for Image"""
 
-    def __init__(self, config: dict, init="zeros"):
+    def __init__(self, n_energies: int, config: dict, init="zeros"):
         super(Image, self).__init__()
         self.dim_in_voxels = Point(*config["n_voxels"])
         self.dim_in_cm = Point(*config["volume_dimensions"])
@@ -21,11 +21,21 @@ class Image:
         # Contains the actual values of the image
         if init == "zeros":
             self.values = self.xp.zeros(
-                (self.dim_in_voxels.x, self.dim_in_voxels.y, self.dim_in_voxels.z)
+                (
+                    n_energies,
+                    self.dim_in_voxels.x,
+                    self.dim_in_voxels.y,
+                    self.dim_in_voxels.z,
+                )
             )
         if init == "ones":
             self.values = self.xp.ones(
-                (self.dim_in_voxels.x, self.dim_in_voxels.y, self.dim_in_voxels.z)
+                (
+                    n_energies,
+                    self.dim_in_voxels.x,
+                    self.dim_in_voxels.y,
+                    self.dim_in_voxels.z,
+                )
             )
 
     def display_x(self, slice: int = 0, **params):
@@ -67,10 +77,10 @@ class Image:
         fig.tight_layout()
         plt.show()
 
-    def display_z(self, slice: int = 0, **params):
+    def display_z(self, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
         mappable = ax.imshow(
-            self.values[:, :, slice].T,
+            self.values[energy, :, :, slice].T,
             origin="lower",
             extent=[
                 self.center.x - self.dim_in_cm.x / 2,
@@ -78,10 +88,9 @@ class Image:
                 self.center.y - self.dim_in_cm.y / 2,
                 self.center.y + self.dim_in_cm.y / 2,
             ],
-            **params,
         )
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
-        ax.set_title("First slice of the Z axis view")
+        ax.set_title("First slice of the Z axis view" + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
         plt.show()

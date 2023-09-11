@@ -1,7 +1,6 @@
 from logging import getLogger
 from pathlib import Path
 
-
 from camera import Camera
 from event import Event
 
@@ -11,11 +10,12 @@ logger = getLogger("__main__." + __name__)
 def read_data_file(
     file_name: Path,
     n_events: int,
-    E0: float,
+    E0: list[float],
     cameras: list[Camera],
     energy_range: list,
     remove_out_of_range_energies: bool = True,
     start_position: int = 0,
+    tol: float = 1e1,
 ) -> list[Event]:
     events = []
     skipped_events = 0
@@ -23,7 +23,7 @@ def read_data_file(
         for line_n, line in enumerate(data_fh):
             if line_n >= start_position:
                 try:
-                    event = Event(line_n, line, E0)
+                    event = Event(line_n, line, E0, tol=tol)
                     # This links the event to the camera(s) in which it occurred
                     event.set_camera_index(cameras)
                     events.append(event)

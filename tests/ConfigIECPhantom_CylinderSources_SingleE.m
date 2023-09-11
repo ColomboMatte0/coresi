@@ -19,7 +19,7 @@ SENSITIVITY = 'OFF' ;       % 'ON', 'OFF'. Recommended MODEL 'cos0rho0' when sen
 SENSITIVITY_FILE = '/home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw';
 %%   Data selection
 SAMPLES =1;                            % for statistical studies
-COUNTS_PER_SAMPLE = 2000;
+COUNTS_PER_SAMPLE = 1;
 %20000       % nb of events for 7 point source
 PRESELECT=1;                           % COUNTS_PER_SAMPLE is:
                                        % if 0, nb of detected events
@@ -57,9 +57,9 @@ VOLUME_CENTRE = [0, 0, 0];
 DATA_TYPE_MEGA=0;   %0=sivan, 1=revan, 0 is default value
 FIRST_ITERATION=0;                     % continue iterations;
                                        % 1 means from the beginning
-ITERATIONS = 20;
+ITERATIONS = 0;
 LAST_ITERATION=FIRST_ITERATION+ITERATIONS;
-ALGORITHM = 1;          % 0=CV, 1=CV_eu (energy uncertainty, sigma on angle), 
+ALGORITHM = 0;          % 0=CV, 1=CV_eu (energy uncertainty, sigma on angle), 
                         % 2=CV_su (spatial uncertainty), 3=CV_esu (energy and spatial uncertainty)
                         % 4=spectral continuous, 5=spectral discrete with CVs, 6=spectral discrete with EU
 			% 7=spectral discrete in 4D, 8==spectral discrete in 4D with EU 9=spectral continuous in 4D
@@ -71,7 +71,7 @@ MODEL = 'cos1rho2';       % cos0rho0 que le K et la gaussienne,
                           % 1/rho^2
 
 WIDTH_FACTOR=1;         % RADON 
-NB_SIGMA = 1;
+NB_SIGMA = 2;
 
 
 ALPHA_TV=0;%normalized true image: methode A, alpha_usual=1/s_j0*efficacity_j0

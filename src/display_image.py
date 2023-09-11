@@ -21,6 +21,6 @@ args = parser.parse_args()
 with open(args.config, "r") as fh:
     config = yaml.safe_load(fh)
 
-image = Image(config["volume"])
+image = Image(len(config["E0"]), config["volume"])
 image.values = np.load(args.image)
 image.display_z()

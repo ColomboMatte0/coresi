@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from camera import Camera
+from camera import Camera, DetectorType
 from event import Event
 from gpuoptional import array_module
 from image import Image
@@ -23,8 +23,12 @@ class LM_MLEM(object):
         events: list[Event],
         sensitivity_file: str,
         run_name: str,
+        energies: list[int],
+        tol: float,
     ):
         super(LM_MLEM, self).__init__()
+
+        self.m_e = 511  # electron mass in EV
 
         self.xp = array_module()
         # Inform the user on whether we are using numpy or cupy
@@ -32,49 +36,152 @@ class LM_MLEM(object):
 
         self.cone_thickness = config_mlem["cone_thickness"]
 
+        self.compute_theta_j = True
+        if config_mlem["model"] == "cos0rho0":
+            # Theta_j is not needed for this model. Instruct to not compute it as
+            # it's fairly expensive
+            self.compute_theta_j = False
+
+            def model(kbl_j, rho_j):
+                return kbl_j
+
+        elif config_mlem["model"] == "cos0rho2":
+            # Theta_j is not needed for this model. Instruct to not compute it as
+            # it's fairly expensive
+            self.compute_theta_j = False
+
+            def model(kbl_j, rho_j):
+                return kbl_j / rho_j**2
+
+        elif config_mlem["model"] == "cos1rho2":
+
+            def model(kbl_j, cos_theta_j, rho_j):
+                return kbl_j * abs(cos_theta_j) / rho_j**2
+
+        else:
+            logger.fatal(
+                f"Model {config_mlem['model']} is not supported, either use cos0rho2 or cos1rho2"
+            )
+            sys.exit(1)
+
+        self.model = model
         self.cameras = cameras
         self.events = events
         self.run_name = run_name
+        self.energies = self.xp.array(sorted(energies))
+        self.n_energies = len(energies)
+        self.tol = tol
+        if self.n_energies == 0:
+            logger.fatal("The configuration file has an empty E0 key")
+            sys.exit(1)
+
         constants = self.read_constants("constants.yaml")
 
         self.config_volume = config_volume
-        # TODO: Figure out whether using a sparse (CPU or GPU) matrix is worth it
-        self.line = Image(self.config_volume)
-        self.sensitivity = Image(self.config_volume, init="ones")
+        self.line = Image(self.n_energies, self.config_volume)
+        self.sensitivity = Image(self.n_energies, self.config_volume, init="ones")
         if sensitivity_file is not None:
             self.sensitivity.values = self.xp.fromfile(sensitivity_file).reshape(
                 self.sensitivity.values.shape
             )
 
-        if config_mlem["cone_thickness"] == "angular":
-            # Parameters related to Doppler broadening as a sum of two Gaussians
-            self.a1 = constants["doppler_broadening"]["a1"]
-            self.a2 = constants["doppler_broadening"]["a2"]
-            self.sigma_beta_1 = (
-                constants["doppler_broadening"]["sigma_beta_1"]
-                * config_mlem["width_factor"]
-            )
-            self.sigma_beta_2 = (
-                constants["doppler_broadening"]["sigma_beta_2"]
-                * config_mlem["width_factor"]
-            )
-            # Skip the Gaussian above n_sigma * Gaussian std
-            self.limit_sigma = (
-                max([self.sigma_beta_1, self.sigma_beta_2]) * config_mlem["n_sigma"]
-            )
-            # Alias to avoid redoing the test between angular and parallel in
-            # run
-            logger.debug("Using angular thickness")
-            self.SM_line = self.SM_angular_thickness
-        # Parallel thickness
-        else:
+        if config_mlem["cone_thickness"] == "parallel":
             self.sigma_beta = (
                 self.line.voxel_size.norm2() * config_mlem["width_factor"] / 2
             )
             # Skip the Gaussian above n_sigma * Gaussian std
             self.limit_sigma = self.sigma_beta * config_mlem["n_sigma"]
-            logger.debug("Using parallel thickness")
-            self.SM_line = self.SM_parallel_thickness
+            if self.n_energies > 1:
+                # Alias to avoid selecting the right algorithm in the run loop
+                self.SM_line = self.SM_parallel_thickness_spectral
+            else:
+                self.SM_line = self.SM_parallel_thickness
+        elif config_mlem["cone_thickness"] == "angular":
+            # TODO: If E0 is unknown, we need to interpolate the values for each
+            # event based on the known constants
+            # TODO: What we don't have the constants for a given energy?
+            # Spectral or not. Same. interpolate
+            # We need constants for each energy. Angular resolution modeling
+            # is a double Gaussian, its parameters depend on the energy
+            self.a1, self.a2, self.sigma_beta_1, self.sigma_beta_2 = [], [], [], []
+            for energy in self.energies:
+                key = f"energy_{energy}"
+                if key in constants["doppler_broadening"]:
+                    self.a1.append(constants["doppler_broadening"][key]["a1"])
+                    self.a2.append(constants["doppler_broadening"][key]["a2"])
+                    self.sigma_beta_1.append(
+                        constants["doppler_broadening"][key]["sigma_beta_1"]
+                    )
+                    self.sigma_beta_2.append(
+                        constants["doppler_broadening"][key]["sigma_beta_2"]
+                    )
+                else:
+                    # interpolate
+                    # TODO: sort values according to the right key
+                    known_energies = [
+                        int(key.split("_")[1])
+                        for key in constants["doppler_broadening"].keys()
+                    ]
+                    self.a1.append(
+                        self.xp.interp(
+                            energy,
+                            known_energies,
+                            [
+                                value["a1"]
+                                for value in constants["doppler_broadening"].values()
+                            ],
+                        )
+                    )
+                    self.a2.append(
+                        self.xp.interp(
+                            energy,
+                            known_energies,
+                            [
+                                value["a2"]
+                                for value in constants["doppler_broadening"].values()
+                            ],
+                        )
+                    )
+                    self.sigma_beta_1.append(
+                        self.xp.interp(
+                            energy,
+                            known_energies,
+                            [
+                                value["sigma_beta_1"]
+                                for value in constants["doppler_broadening"].values()
+                            ],
+                        )
+                    )
+                    self.sigma_beta_2.append(
+                        self.xp.interp(
+                            energy,
+                            known_energies,
+                            [
+                                value["sigma_beta_2"]
+                                for value in constants["doppler_broadening"].values()
+                            ],
+                        )
+                    )
+                self.limit_sigma = [
+                    max([self.sigma_beta_1[idx], self.sigma_beta_2[idx]])
+                    * config_mlem["n_sigma"]
+                    for idx in range(len(self.sigma_beta_1))
+                ]
+            if self.n_energies > 1:
+                # Alias to avoid selecting the right algorithm in the run loop
+                self.SM_line = self.SM_angular_thickness_spectral
+            else:
+                # If only one energy, tranform the array into a single value
+                self.a1 = self.a1[0]
+                self.a2 = self.a2[0]
+                self.sigma_beta_1 = self.sigma_beta_1[0]
+                self.sigma_beta_2 = self.sigma_beta_2[0]
+                self.limit_sigma = (
+                    max([self.sigma_beta_1, self.sigma_beta_2]) * config_mlem["n_sigma"]
+                )
+                self.SM_line = self.SM_angular_thickness
+
+        logger.info(f"Using algorithm {self.SM_line.__name__}")
 
         # Sample points along each volume dimension. use voxel size to center
         # the points on the voxels
@@ -113,7 +220,7 @@ class LM_MLEM(object):
             )
             sys.exit(1)
         # Was lambda in C++ but lambda is a reserved keyword in Python
-        result = Image(self.config_volume, init="ones")
+        result = Image(self.n_energies, self.config_volume, init="ones")
 
         # Load a checkpoint if necessary
         if first_iter > 0:
@@ -140,33 +247,49 @@ class LM_MLEM(object):
             del checkpoint
 
         # It must be initialized as zero as temporary values are sumed
-        next_result = Image(self.config_volume, init="zeros")
+        next_result = Image(self.n_energies, self.config_volume, init="zeros")
 
         for iter in range(first_iter, last_iter + 1):
             logger.info(f"Iteration {str(iter)}")
             to_delete = []
             for idx, event in enumerate(self.events):
                 try:
+                    if iter - first_iter == 0:
+                        self.xsect_second_hit(event)
                     # Compute the system matrix line.
                     # iter - first_iter is a hacky trick to make SM_line believe that
                     # the first iter is 0 even if this is not the case. this works
                     # because the iter param is only used to check whether we need to
                     # verify if the cone intersect the voxel i.e. if we are at the
                     # first iteration
-                    line = self.SM_line(iter - first_iter, event)
+                    line = self.SM_line(iter - first_iter, event, self.energies != [-1])
                 except ValueError as e:
                     logger.debug(f"Skipping event {event.id} REASON: {e}")
-                    # Remove it from the list because we known we don't need to
+                    # Remove it from the list because we know we don't need to
                     # look at it anymore
                     to_delete.append(idx)
                     continue
 
-                # Iteration 0 is a simple backprojection
-                if iter == 0:
-                    next_result.values += line.values
-                else:
-                    forward_proj = self.xp.vdot(line.values, result.values)
-                    next_result.values += line.values / forward_proj
+                # # Iteration 0 is a simple backprojection
+                # if iter == 0:
+                #     next_result.values += line.values
+                # else:
+                #     # independent dot for the energies
+                #     forward_proj = self.xp.einsum(
+                #         "ijkl,ijkl->i", line.values, result.values
+                #     ).reshape(-1, 1, 1, 1)
+                #     next_result.values += self.xp.divide(
+                #         line.values, forward_proj, where=forward_proj != 0
+                #     )
+                for energy in range(self.n_energies):
+                    # Iteration 0 is a simple backprojection
+                    if iter == 0:
+                        next_result.values[energy] += line.values[energy]
+                    elif event.xsection[energy] > 0.0:
+                        forward_proj = self.xp.vdot(
+                            line.values[energy], result.values[energy]
+                        )
+                        next_result.values[energy] += line.values[energy] / forward_proj
 
             if len(to_delete) > 0:
                 self.events = self.xp.delete(self.events, to_delete)
@@ -186,6 +309,7 @@ class LM_MLEM(object):
             # It must be re-initialized as zero as temporary values are sumed
             next_result.values = self.xp.zeros(
                 (
+                    self.n_energies,
                     next_result.dim_in_voxels.x,
                     next_result.dim_in_voxels.y,
                     next_result.dim_in_voxels.z,
@@ -196,10 +320,10 @@ class LM_MLEM(object):
                 self.xp.save(
                     checkpoint_dir / f"{self.run_name}.iter.{str(iter)}", result.values
                 )
-
         return result
 
-    def SM_angular_thickness(self, iter: int, event: Event) -> Image:
+    def SM_angular_thickness(self, iter: int, event: Event, known_E0: bool) -> Image:
+        self.line.values = self.xp.zeros(self.line.values.shape)
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
         rho_j = self.xp.sqrt(
@@ -208,7 +332,7 @@ class LM_MLEM(object):
             + (event.V1.z - self.zz) ** 2
         )
 
-        # delta j, angle from the cone axis to the voxel
+        # delta j is  angle from the cone axis to the voxel
         # self.xx - event.V1.x is Oj v1. We need it further down in the code but it
         # might take a lot of memory to store it. So compute it inline here and
         # below for theta_j. If in the future we have a lot of ram it can be
@@ -222,14 +346,14 @@ class LM_MLEM(object):
         self.line.values = self.xp.abs(self.xp.arccos(cos_delta_j) - event.beta)
 
         # Discard voxels not within the "thick" cone
-        self.line.values[self.line.values > self.limit_sigma] = 0
+        mask = self.line.values > self.limit_sigma
+        self.line.values[mask] = 0.0
 
-        # If the cone does not intersect with the voxel at all, discard the self.line
+        # If the cone does not intersect with the volume at all, discard the self.line
         if iter == 0 and not self.xp.any(self.line.values):
             raise ValueError(
-                f"The cone does not intersect the voxel for event {event.id}"
+                f"The cone does not intersect the volume for event {event.id}"
             )
-        mask = self.line.values == 0
         # Remove the background for cos_delta_j
         cos_delta_j[mask] = 0
         camera_V1_Oz = self.cameras[event.idx_V1].Oz
@@ -242,32 +366,50 @@ class LM_MLEM(object):
         ) + self.a2 * self.xp.exp(
             -self.line.values[mask] ** 2 * 0.5 / self.sigma_beta_2**2
         )
-        self.line.values = self.line.values * self.xp.abs(
-            (
-                # Compute the angle between the camera z axis and the voxel
-                # "solid angle". theta_j
-                (camera_V1_Oz.x * (self.xx - event.V1.x))
-                + (camera_V1_Oz.y * (self.yy - event.V1.y))
-                + (camera_V1_Oz.z * (self.zz - event.V1.z)) / rho_j
-            )
-        )
 
+        KN = self.xp.zeros_like(cos_delta_j)
         # lambda / lambda prime
-        KN = 1.0 / (1.0 + event.E0 / 511.0 * (1.0 - cos_delta_j))
+        KN[mask] = 1.0 / (1.0 + event.E0 / self.m_e * (1.0 - cos_delta_j[mask]))
 
         # KN is the Klein–Nishina formula to obtain the differential cross
         # section for each voxel. https://en.wikipedia.org/wiki/Klein%E2%80%93Nishina_formula
         # sin**2 = 1-cos**2 to avoid computing the sinus
         # Note that the coresi C++ did not use the cos squared, this might have
         # been a mistake
-        KN = KN * (KN**2 + 1) + KN * KN * (-1.0 + cos_delta_j**2)
+        KN[mask] = KN[mask] * (KN[mask] ** 2 + 1) + KN[mask] * KN[mask] * (
+            -1.0 + cos_delta_j[mask] ** 2
+        )
+
+        # Compute the angle between the camera z axis and the voxel
+        # "solid angle". theta_j
+        if self.compute_theta_j:
+            # TODO: Apply mask here?
+            cos_theta_j = (
+                (camera_V1_Oz.x * (self.xx - event.V1.x))
+                + (camera_V1_Oz.y * (self.yy - event.V1.y))
+                + (camera_V1_Oz.z * (self.zz - event.V1.z)) / rho_j
+            )
+            self.line.values = self.model(self.line.values, cos_theta_j, rho_j)
+        else:
+            self.line.values = self.model(self.line.values, rho_j)
 
         # Ti is here i.e. the system matrix for an event i
-        self.line.values = KN * self.line.values / rho_j**2
+        self.line.values = KN[mask] * self.xp.expand_dims(self.line.values, axis=0)
+
         return self.line
 
-    def SM_parallel_thickness(self, iter: int, event: Event) -> Image:
-        """docstring for SM_parallel_thickness"""
+    def SM_angular_thickness_spectral(
+        self, iter: int, event: Event, known_E0: bool
+    ) -> Image:
+        """docstring for SM_parallel_thickness_spectral"""
+        if event.energy_bin >= self.n_energies:
+            logger.fatal(
+                f"The energy bin has not been determinted correctly for event {str(event.id)}"
+            )
+            sys.exit(1)
+        camera = self.cameras[event.idx_V1]
+        self.line.values = self.xp.zeros(self.line.values.shape)
+
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
         rho_j = self.xp.sqrt(
@@ -275,11 +417,248 @@ class LM_MLEM(object):
             + (event.V1.y - self.yy) ** 2
             + (event.V1.z - self.zz) ** 2
         )
-        # delta j, angle from the cone axis to the voxel
+        if self.compute_theta_j:
+            # We use the meshgrid twice to avoid storing the result because it's 3 times the
+            # volume size
+            cos_theta_j = (
+                (event.V1.x - self.xx) * event.normal_to_layer_V1.x
+                + (event.V1.y - self.yy) * event.normal_to_layer_V1.y
+                + (event.V1.z - self.zz) * event.normal_to_layer_V1.z
+            ) / rho_j
+
+        # delta j is the angle from the cone axis to the voxel
         # self.xx - event.V1.x is Oj v1. We need it further down in the code but it
         # might take a lot of memory to store it. So compute it inline here and
         # below for theta_j. If in the future we have a lot of ram it can be
         # stored
+        cos_delta_j = (
+            event.axis.x * (self.xx - event.V1.x)
+            + event.axis.y * (self.yy - event.V1.y)
+            + event.axis.z * (self.zz - event.V1.z)
+        ) / rho_j
+
+        # Geometry
+        for idx in self.xp.where(event.xsection > 0)[0]:
+            cos_beta = 1.0 - (
+                self.m_e
+                * event.Ee
+                / (self.energies[idx] * (self.energies[idx] - event.Ee))
+            )
+
+            if iter == 0 and ((cos_beta < -1) or (cos_beta > 1)):
+                event.xsection[idx] = 0.0
+                continue
+
+            # ddelta is the angle from the voxels to the cone surface
+            self.line.values[idx] = self.xp.abs(
+                self.xp.arccos(cos_delta_j) - self.xp.arccos(cos_beta)
+            )
+            mask_cone = self.line.values[idx] <= self.limit_sigma[idx]
+
+            self.line.values[idx][~mask_cone] = 0.0
+            # If the cone does not intersect the volume for a given energy,
+            # continue
+            if iter == 0 and self.xp.all(~mask_cone):
+                event.xsection[idx] = 0.0
+                continue
+
+            sca_compton_diff_xsection = self.xp.zeros_like(cos_delta_j)
+            sca_compton_diff_xsection[mask_cone] = camera.get_compton_diff_xsection(
+                self.energies[idx],
+                # ENRIQUE: In Enrique thesis the cosbeta here is
+                # the one of the known energy constant
+                # for all voxels. Instead we use
+                # cos_delta_j which is a matrix
+                cos_delta_j[mask_cone],
+            )
+
+            # ENRIQUE: Different from Enrique's thesis: no V2V1^2 is considered here, the
+            # constants, and the probability of escape of the secondary photon (i.e. no interaction)
+            # The voxel's size is not taken into account either.
+            kbl_j = self.xp.zeros_like(cos_delta_j)
+            kbl_j[mask_cone] = (
+                camera.sca_n_eff
+                * sca_compton_diff_xsection[mask_cone]
+                * self.m_e
+                * 4
+                * self.xp.pi
+                # What Enrique did - use the E1 from the event
+                # / self.xp.power(self.energies[idx] - event.Ee, 2)
+                / self.xp.power(
+                    self.energies[idx] -
+                    # Compute E1 for the tried cone at each voxel within the thick surface
+                    (self.energies[idx] ** 2)
+                    / (self.energies[idx] + self.m_e / (1 - cos_delta_j[mask_cone])),
+                    2,
+                )
+            )
+            kbl_j[mask_cone] = (
+                camera.sca_n_eff
+                * sca_compton_diff_xsection[mask_cone]
+                * self.m_e
+                * 2
+                * self.xp.pi
+                # What Enrique did - use the E1 from the event
+                # / self.xp.power(self.energies[idx] - event.Ee, 2)
+                / self.xp.power(
+                    self.energies[idx] -
+                    # Compute E1 for the tried cone at each voxel within the thick surface
+                    (self.energies[idx] ** 2)
+                    / (self.energies[idx] + self.m_e / (1 - cos_delta_j[mask_cone])),
+                    2,
+                )
+            )
+            # Multiply by exponential terms
+            # See List mode em reconstruction of Compton Sctter Camera Images in 3D.
+            # Wilderman et al. for help and Enrique's thesis.
+            # Probabilities for the first photon to reach the middle of the
+            # scatterer layer
+            kbl_j[mask_cone] *= self.xp.exp(
+                # zd11
+                -camera.get_total_diff_xsection(
+                    self.energies[idx], event.detector_type_V1
+                )
+                # Attenuation coefficient is proportinal to the density
+                # (which depends on the medium's physical state)
+                * (
+                    camera.sca_density
+                    if event.detector_type_V1 == DetectorType.SCA
+                    else camera.abs_density
+                )
+                # The thickness. layer_idx_V1 is in a defined layer i.e. it
+                # will not be in a None absortber layer as this is checked
+                # beforehand
+                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                # Assume the interaction is the middle of the material in a
+                # orthogonal line?
+                # TODO: take the incident angle into account?
+                / 2
+            )
+
+            # zd12
+            # Probability of of going out of the scatterer layer and to the
+            # absorber
+            kbl_j[mask_cone] *= self.xp.exp(
+                -camera.get_total_diff_xsection(
+                    self.energies[idx] - event.Ee, event.detector_type_V1
+                )
+                * (
+                    camera.sca_density
+                    if event.detector_type_V1 == DetectorType.SCA
+                    else camera.abs_density
+                )
+                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                / 2
+            ) * self.xp.exp(
+                -(
+                    camera.get_total_diff_xsection(
+                        self.energies[idx] - event.Ee, event.detector_type_V2
+                    )
+                    * (camera.sca_layers + camera.abs_layers)[
+                        event.layer_idx_V2
+                    ].thickness
+                    / 2
+                    # why not density here?
+                    * (
+                        camera.sca_density
+                        if event.detector_type_V2 == DetectorType.SCA
+                        else camera.abs_density
+                    )
+                )
+            )
+            # Attenuation in planes not triggered
+            # Before scatterer
+            # TODO: If first interaction can be in the absorber. In this case, we
+            # would need to compute the number of scatteres the gamma went
+            # through without interactions
+            # Probability of first and 2nd photon to go through not triggered
+            # layers, respectivelly
+            if event.layer_idx_V1 > 0:
+                kbl_j[mask_cone] *= self.xp.exp(
+                    -(
+                        camera.get_total_diff_xsection(
+                            self.energies[idx], event.detector_type_V1
+                        )
+                        * (
+                            camera.sca_density
+                            if event.detector_type_V1 == DetectorType.SCA
+                            else camera.abs_density
+                        )
+                        * event.layer_idx_V1
+                        * (camera.sca_layers + camera.abs_layers)[
+                            event.layer_idx_V1
+                        ].thickness
+                    )
+                )
+            # After scatterer
+            # TODO: This works only for 1 single absorber below the scatterers
+            # But what if the interaction is in an absorber on the sides. If
+            # that happens, the scatterers below may needs to be ignored
+            kbl_j[mask_cone] *= self.xp.exp(
+                -(
+                    camera.get_total_diff_xsection(
+                        self.energies[idx] - event.Ee, event.detector_type_V1
+                    )
+                    * (
+                        camera.sca_density
+                        if event.detector_type_V1 == DetectorType.SCA
+                        else camera.abs_density
+                    )
+                    * abs(event.layer_idx_V2 - event.layer_idx_V1 - 1)
+                    * (camera.sca_layers + camera.abs_layers)[
+                        event.layer_idx_V1
+                    ].thickness
+                )
+            )
+
+            if self.compute_theta_j:
+                kbl_j = self.model(kbl_j, cos_theta_j, rho_j)
+            else:
+                kbl_j = self.model(kbl_j, rho_j)
+
+            # Gauss
+            self.line.values[idx][mask_cone] = (
+                kbl_j[mask_cone]
+                * event.xsection[idx]
+                * (
+                    self.a1[idx]
+                    * self.xp.exp(
+                        -self.line.values[idx][mask_cone] ** 2
+                        / (2 * self.sigma_beta_1[idx] ** 2)
+                    )
+                    + (
+                        self.a2[idx]
+                        * self.xp.exp(
+                            -self.line.values[idx][mask_cone] ** 2
+                            / (2 * self.sigma_beta_2[idx] ** 2)
+                        )
+                    )
+                )
+            )
+
+        if iter == 0 and self.xp.all(event.xsection == 0.0):
+            raise ValueError(
+                f"The cone does not intersect the volume for event {event.id} for all tried energies"
+            )
+
+        return self.line
+
+    def SM_parallel_thickness(self, iter: int, event: Event, known_E0: bool) -> Image:
+        """docstring for SM_parallel_thickness"""
+        self.line.values = self.xp.zeros(self.line.values.shape)
+        # rho_j is a vector with distances from the voxel to the cone origin
+        # It's normalized
+        rho_j = self.xp.sqrt(
+            (event.V1.x - self.xx) ** 2
+            + (event.V1.y - self.yy) ** 2
+            + (event.V1.z - self.zz) ** 2
+        )
+        # delta j is the distance from the voxel to the cone axis
+        # self.xx - event.V1.x is Oj v1. We need it further down in the code but it
+        # might take a lot of memory to store it. So compute it inline here and
+        # below for theta_j. If in the future we have a lot of ram it can be
+        # stored
+        # Cosinus of delta_j
         cos_delta_j = (
             event.axis.x * (self.xx - event.V1.x)
             + event.axis.y * (self.yy - event.V1.y)
@@ -312,30 +691,374 @@ class LM_MLEM(object):
         self.line.values[mask] = self.xp.exp(
             -self.line.values[mask] ** 2 * 0.5 / self.sigma_beta**2
         )
-        self.line.values = self.line.values * self.xp.abs(
-            (
-                # Compute the angle between the camera z axis and the voxel
-                # "solid angle". theta_j
+
+        # Compute the angle between the camera z axis and the voxel
+        # "solid angle". theta_j
+        if self.compute_theta_j:
+            cos_theta_j = (
                 (camera_V1_Oz.x * (self.xx - event.V1.x))
                 + (camera_V1_Oz.y * (self.yy - event.V1.y))
                 + (camera_V1_Oz.z * (self.zz - event.V1.z)) / rho_j
             )
-        )
+            self.line.values = self.model(self.line.values, cos_theta_j, rho_j)
+        else:
+            self.line.values = self.model(self.line.values, rho_j)
 
         # lambda / lambda prime
-        KN = 1.0 / (1.0 + event.E0 / 511.0 * (1.0 - cos_delta_j))
+        KN = self.xp.zeros_like(cos_delta_j)
+        KN[mask] = 1.0 / (1.0 + event.E0 / self.m_e * (1.0 - cos_delta_j[mask]))
 
         # KN is the Klein–Nishina formula to obtain the differential cross
         # section for each voxel. https://en.wikipedia.org/wiki/Klein%E2%80%93Nishina_formula
         # sin**2 = 1-cos**2 to avoid computing the sinus
         # Note that the coresi C++ did not use the cos squared, this might have
         # been a mistake
-        KN = KN * (KN**2 + 1) + KN * KN * (-1.0 + cos_delta_j**2)
+        KN[mask] = KN[mask] * (KN[mask] ** 2 + 1) + KN[mask] * KN[mask] * (
+            -1.0 + cos_delta_j[mask] ** 2
+        )
 
         # Ti is here i.e. the system matrix for an event i
-
-        self.line.values = KN * self.line.values / rho_j**2
+        self.line.values = KN * self.xp.expand_dims(self.line.values, axis=0)
         return self.line
+
+    def SM_parallel_thickness_spectral(
+        self, iter: int, event: Event, known_E0: bool
+    ) -> Image:
+        """docstring for SM_parallel_thickness_spectral"""
+        if event.energy_bin >= self.n_energies:
+            logger.fatal(
+                f"The energy bin has not been determinted correctly for event {str(event.id)}"
+            )
+            sys.exit(1)
+        camera = self.cameras[event.idx_V1]
+        self.line.values = self.xp.zeros(self.line.values.shape)
+
+        # rho_j is a vector with distances from the voxel to the cone origin
+        # It's normalized
+        rho_j = self.xp.sqrt(
+            (event.V1.x - self.xx) ** 2
+            + (event.V1.y - self.yy) ** 2
+            + (event.V1.z - self.zz) ** 2
+        )
+        if self.compute_theta_j:
+            # We use the meshgrid twice to avoid storing the result because it's 3 times the
+            # volume size
+            cos_theta_j = (
+                (event.V1.x - self.xx) * event.normal_to_layer_V1.x
+                + (event.V1.y - self.yy) * event.normal_to_layer_V1.y
+                + (event.V1.z - self.zz) * event.normal_to_layer_V1.z
+            ) / rho_j
+
+        # delta j is the angle from the cone axis to the voxel
+        # self.xx - event.V1.x is Oj v1. We need it further down in the code but it
+        # might take a lot of memory to store it. So compute it inline here and
+        # below for theta_j. If in the future we have a lot of ram it can be
+        # stored
+        cos_delta_j = (
+            event.axis.x * (self.xx - event.V1.x)
+            + event.axis.y * (self.yy - event.V1.y)
+            + event.axis.z * (self.zz - event.V1.z)
+        ) / rho_j
+
+        # Geometry
+        for idx in self.xp.where(event.xsection > 0)[0]:
+            cos_beta = 1.0 - (
+                self.m_e
+                * event.Ee
+                / (self.energies[idx] * (self.energies[idx] - event.Ee))
+            )
+
+            if iter == 0 and ((cos_beta < -1) or (cos_beta > 1)):
+                event.xsection[idx] = 0.0
+                continue
+            sin_beta = self.xp.sqrt(1 - self.xp.power(cos_beta, 2))
+            # We take the sinus (optimized) of ddelta (angle from the voxels to the cone surface)
+            # and multiply by rhoj to get the distance from
+            # the voxels to the cone surface
+            self.line.values[idx] = rho_j * self.xp.abs(
+                cos_beta * self.xp.sqrt(1 - cos_delta_j**2) - sin_beta * cos_delta_j
+            )
+            mask_cone = self.line.values[idx] <= self.limit_sigma
+
+            self.line.values[idx][~mask_cone] = 0.0
+            # If the cone does not intersect the volume for a given energy,
+            # continue
+            if iter == 0 and self.xp.all(~mask_cone):
+                event.xsection[idx] = 0.0
+                continue
+
+            sca_compton_diff_xsection = self.xp.zeros_like(cos_delta_j)
+            sca_compton_diff_xsection[mask_cone] = camera.get_compton_diff_xsection(
+                self.energies[idx],
+                # ENRIQUE: In Enrique thesis the cosbeta here is
+                # the one of the known energy constant
+                # for all voxels. Instead we use
+                # cos_delta_j which is a matrix
+                cos_delta_j[mask_cone],
+            )
+
+            # ENRIQUE: Different from Enrique's thesis: no V2V1^2 is considered here, the
+            # constants, and the probability of escape of the secondary photon (i.e. no interaction)
+            # The voxel's size is not taken into account either.
+            kbl_j = self.xp.zeros_like(cos_delta_j)
+            kbl_j[mask_cone] = (
+                camera.sca_n_eff
+                * sca_compton_diff_xsection[mask_cone]
+                * self.m_e
+                * 2
+                * self.xp.pi
+                # What Enrique did - use the E1 from the event
+                / self.xp.power(self.energies[idx] - event.Ee, 2)
+            )
+            # Multiply by exponential terms
+            # See List mode em reconstruction of Compton Sctter Camera Images in 3D.
+            # Wilderman et al. for help and Enrique's thesis.
+            # Probabilities for the first photon to reach the middle of the
+            # scatterer layer
+            kbl_j[mask_cone] *= self.xp.exp(
+                # zd11
+                -camera.get_total_diff_xsection(
+                    self.energies[idx], event.detector_type_V1
+                )
+                # Attenuation coefficient is proportinal to the density
+                # (which depends on the medium's physical state)
+                * (
+                    camera.sca_density
+                    if event.detector_type_V1 == DetectorType.SCA
+                    else camera.abs_density
+                )
+                # The thickness. layer_idx_V1 is in a defined layer i.e. it
+                # will not be in a None absortber layer as this is checked
+                # beforehand
+                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                # Assume the interaction is the middle of the material in a
+                # orthogonal line?
+                # TODO: take the incident angle into account?
+                / 2
+            )
+
+            # zd12
+            # Probability of of going out of the scatterer layer and to the
+            # absorber
+            kbl_j[mask_cone] *= self.xp.exp(
+                -camera.get_total_diff_xsection(
+                    self.energies[idx] - event.Ee, event.detector_type_V1
+                )
+                * (
+                    camera.sca_density
+                    if event.detector_type_V1 == DetectorType.SCA
+                    else camera.abs_density
+                )
+                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                / 2
+            ) * self.xp.exp(
+                -(
+                    camera.get_total_diff_xsection(
+                        self.energies[idx] - event.Ee, event.detector_type_V2
+                    )
+                    * (camera.sca_layers + camera.abs_layers)[
+                        event.layer_idx_V2
+                    ].thickness
+                    / 2
+                    * (
+                        camera.sca_density
+                        if event.detector_type_V2 == DetectorType.SCA
+                        else camera.abs_density
+                    )
+                )
+            )
+            # Attenuation in planes not triggered
+            # Before scatterer
+            # TODO: If first interaction can be in the absorber. In this case, we
+            # would need to compute the number of scatteres the gamma went
+            # through without interactions
+            # Probability of first and 2nd photon to go through not triggered
+            # layers, respectivelly
+            if event.layer_idx_V1 > 0:
+                kbl_j[mask_cone] *= self.xp.exp(
+                    -(
+                        camera.get_total_diff_xsection(
+                            self.energies[idx], event.detector_type_V1
+                        )
+                        * (
+                            camera.sca_density
+                            if event.detector_type_V1 == DetectorType.SCA
+                            else camera.abs_density
+                        )
+                        * event.layer_idx_V1
+                        * (camera.sca_layers + camera.abs_layers)[
+                            event.layer_idx_V1
+                        ].thickness
+                    )
+                )
+            # After scatterer
+            # TODO: This works only for 1 single absorber below the scatterers
+            # But what if the interaction is in an absorber on the sides. If
+            # that happens, the scatterers below may needs to be ignored
+            kbl_j[mask_cone] *= self.xp.exp(
+                -(
+                    camera.get_total_diff_xsection(
+                        self.energies[idx] - event.Ee, event.detector_type_V1
+                    )
+                    * (
+                        camera.sca_density
+                        if event.detector_type_V1 == DetectorType.SCA
+                        else camera.abs_density
+                    )
+                    * abs(event.layer_idx_V2 - event.layer_idx_V1 - 1)
+                    * (camera.sca_layers + camera.abs_layers)[
+                        event.layer_idx_V1
+                    ].thickness
+                )
+            )
+
+            if self.compute_theta_j:
+                kbl_j = self.model(kbl_j, cos_theta_j, rho_j)
+            else:
+                kbl_j = self.model(kbl_j, rho_j)
+
+            # Gauss
+            self.line.values[idx][mask_cone] = (
+                event.xsection[idx]
+                * kbl_j[mask_cone]
+                * self.xp.exp(
+                    -self.line.values[idx][mask_cone] ** 2 / (2 * self.sigma_beta**2)
+                )
+            )
+
+        if iter == 0 and self.xp.all(event.xsection == 0.0):
+            raise ValueError(
+                f"The cone does not intersect the volume for event {event.id} for all tried energies"
+            )
+
+        return self.line
+
+    def xsect_second_hit(self, event: Event) -> None:
+        camera = self.cameras[event.idx_V1]
+        # This idx is used to put the cone (which is in 4D) into the
+        # system matrix of the correct energy.
+        # We could compute this for all energies at once but that would take more
+        # memory, so a loop is used here.
+        # TODO: add comment to clarigy why we do this this way
+        for idx in self.xp.where(event.xsection < 0)[0]:
+            int2Xsect = 0.0
+            photo_x_section = camera.get_photo_diff_xsection(
+                self.energies[idx] - event.Ee, DetectorType.ABS
+            )
+            photo_x_section_m_e = camera.get_photo_diff_xsection(
+                self.m_e, DetectorType.ABS
+            )
+
+            pair_x_section = camera.get_pair_diff_xsection(
+                self.energies[idx] - event.Ee, DetectorType.ABS
+            )
+            # Absorbition total is Photoelectric, partial absorbition is either
+            # compton or pair production
+            # Photoelectric
+            if abs(self.energies[idx] - event.E0) < self.tol:
+                int2Xsect = (
+                    camera.abs_density * photo_x_section
+                    # Include double absorption probability after pair creation
+                    + camera.abs_density
+                    * pair_x_section
+                    * 2
+                    * self.tol
+                    * self.xp.power(
+                        (
+                            1
+                            - self.xp.exp(
+                                -photo_x_section_m_e
+                                * camera.abs_density
+                                * (camera.sca_layers + camera.abs_layers)[
+                                    event.layer_idx_V2
+                                ].thickness
+                                / 2.0
+                            )
+                        ),
+                        2,
+                    )
+                )
+            # Compton allowed
+            else:
+                cos_beta_2 = 1.0 - (
+                    self.m_e
+                    * event.Eg
+                    / (
+                        (self.energies[idx] - event.Ee)
+                        * (self.energies[idx] - event.Ee - event.Eg)
+                    )
+                )
+                if abs(cos_beta_2) <= 1.0:
+                    abs_compton_diff_xsection = camera.get_compton_diff_xsection(
+                        self.energies[idx],
+                        # ENRIQUE: In Enrique thesis the cosbeta here is
+                        # the one of the known energy constant
+                        # for all voxels. Instead we use
+                        # cos_delta_j which is a matrix
+                        cos_beta_2,
+                    )
+
+                    int2Xsect = (
+                        camera.abs_n_eff
+                        * abs_compton_diff_xsection
+                        * self.m_e
+                        * self.xp.pi
+                        * 4
+                        # dE = tol * 2
+                        # ENRIQUE: dE is not documented in the original C++ code
+                        * self.tol
+                        / (self.xp.power(self.energies[idx] - event.E0, 2))
+                    )
+
+                # Test for pair production
+                if (
+                    abs(self.energies[idx] - (event.E0 + (2 * self.m_e))) < 2 * self.tol
+                ):  # with double escape
+                    int2Xsect += (
+                        camera.abs_density
+                        * pair_x_section
+                        * self.xp.exp(
+                            -photo_x_section_m_e
+                            * camera.abs_density
+                            * (camera.sca_layers + camera.abs_layers)[
+                                event.layer_idx_V2
+                            ].thickness
+                        )
+                    )
+
+                elif (
+                    abs(self.energies[idx] - (event.E0 + self.m_e)) < 2 * self.tol
+                ):  # with single escape
+                    int2Xsect += (
+                        2
+                        * camera.abs_density
+                        * pair_x_section
+                        * (
+                            self.xp.exp(
+                                -photo_x_section_m_e
+                                * camera.abs_density
+                                * (camera.sca_layers + camera.abs_layers)[
+                                    event.layer_idx_V2
+                                ].thickness
+                                / 2.0
+                            )
+                            # ENRIQUE: why difference of two exponentials. Why not
+                            # multiplication of probabilities?. and exp * (1-exp)?
+                            - self.xp.exp(
+                                --photo_x_section_m_e
+                                * camera.abs_density
+                                * (camera.sca_layers + camera.abs_layers)[
+                                    event.layer_idx_V2
+                                ].thickness
+                            )
+                        )
+                    )
+            event.xsection[idx] = int2Xsect
+
+        if self.xp.all(event.xsection == 0.0):
+            raise ValueError(
+                f"The energies deposited in the interactions were not compatible with supplied emmission energies for event {str(event.id)}"
+            )
 
     def read_constants(self, constants_filename: str):
         try:

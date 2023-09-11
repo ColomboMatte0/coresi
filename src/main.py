@@ -64,13 +64,14 @@ logger.info(f"Processing {config['data_file']}")
 # Process events from the data file and associate them with the cameras
 events = read_data_file(
     Path(config["data_file"]),
-    n_events=1,
+    n_events=100,
     E0=config["E0"],
     cameras=cameras,
     # Needed to remove events with energy outside of a given range
     remove_out_of_range_energies=config["remove_out_of_range_energies"],
     energy_range=config["energy_range"],
     start_position=0,
+    tol=config["energy_threshold"],
 )
 
 logger.info(f"Took {time.time() - start} ms to read the data")
@@ -87,6 +88,8 @@ mlem = LM_MLEM(
     # Supply the sensitivity file if provided
     config["sensitivity_file"] if "sensitivity_file" in config else None,
     args.config.name.split(".")[0],
+    config["E0"],
+    config["energy_threshold"],
 )
 
 checkpoint_dir = Path(config["lm_mlem"]["checkpoint_dir"])
@@ -98,5 +101,8 @@ result = mlem.run(
     config["lm_mlem"]["save_every"],
     checkpoint_dir,
 )
+
+for e in range(len(config["E0"])):
+    result.display_z(energy=e)
 
 logger.info(f"Took {time.time() - start} ms for MLEM")
