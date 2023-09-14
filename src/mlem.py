@@ -112,7 +112,9 @@ class LM_MLEM(object):
         # Load a checkpoint if necessary
         if first_iter > 0:
             try:
-                logger.info(f"The first iteration is set to {str(first_iter)}, trying to load {checkpoint_dir / self.run_name}.iter.{str(first_iter - 1)}.npy")
+                logger.info(
+                    f"The first iteration is set to {str(first_iter)}, trying to load {checkpoint_dir / self.run_name}.iter.{str(first_iter - 1)}.npy"
+                )
                 checkpoint = self.xp.load(
                     checkpoint_dir / f"{self.run_name}.iter.{str(first_iter - 1)}.npy"
                 )
@@ -161,12 +163,11 @@ class LM_MLEM(object):
                     to_delete.append(idx)
                     continue
 
-                forward_proj = self.xp.vdot(line.values, result.values)
-
                 # Iteration 0 is a simple backprojection
                 if iter == 0:
                     next_result.values += line.values
                 else:
+                    forward_proj = self.xp.vdot(line.values, result.values)
                     next_result.values += line.values / forward_proj
 
             if len(to_delete) > 0:
@@ -180,7 +181,9 @@ class LM_MLEM(object):
             if iter == 0:
                 result.values = next_result.values
             else:
-                result.values = result.values / self.sensitivity.values * next_result.values
+                result.values = (
+                    result.values / self.sensitivity.values * next_result.values
+                )
 
             if iter % save_every == 0 or iter == last_iter:
                 self.xp.save(

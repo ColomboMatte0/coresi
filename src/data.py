@@ -1,7 +1,6 @@
 from logging import getLogger
 from pathlib import Path
 
-import numpy as np
 
 from camera import Camera
 from event import Event
