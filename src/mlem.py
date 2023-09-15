@@ -138,14 +138,6 @@ class LM_MLEM(object):
 
         for iter in range(first_iter, last_iter + 1):
             logger.info(f"Iteration {str(iter)}")
-            # It must be initialized as zero as temporary values are sumed
-            next_result.values = self.xp.zeros(
-                (
-                    next_result.dim_in_voxels.x,
-                    next_result.dim_in_voxels.y,
-                    next_result.dim_in_voxels.z,
-                )
-            )
             to_delete = []
             for idx, event in enumerate(self.events):
                 try:
@@ -184,6 +176,15 @@ class LM_MLEM(object):
                 result.values = (
                     result.values / self.sensitivity.values * next_result.values
                 )
+
+            # It must be re-initialized as zero as temporary values are sumed
+            next_result.values = self.xp.zeros(
+                (
+                    next_result.dim_in_voxels.x,
+                    next_result.dim_in_voxels.y,
+                    next_result.dim_in_voxels.z,
+                )
+            )
 
             if iter % save_every == 0 or iter == last_iter:
                 self.xp.save(
