@@ -1,4 +1,4 @@
-data_file: /home/lequertier/projects/coresi_git/CodeC++/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
+data_file: /home/vincent/Documents/Postdoc/coresi/CodeC++/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
 data_type: 'MACACO'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
 E0: -1
@@ -9,7 +9,7 @@ energy_range: [120, 150]
 
 # Supply a sensitivity file. Needs to have the same size as the number of
 # voxels in the volume
-# sensitivity_file: filename
+sensitivity_file: /home/vincent/Documents/Postdoc/coresi/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
 
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 # Up to 5 absorbers are implemented
