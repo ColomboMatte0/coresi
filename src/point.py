@@ -4,7 +4,7 @@ import numpy as np
 
 
 class Point(np.ndarray):
-    def __new__(cls, x, y, z):
+    def __new__(cls, x: float, y: float, z: float) -> "Point":
         """
         :param cls:
         """
@@ -12,27 +12,27 @@ class Point(np.ndarray):
         return obj
 
     @property
-    def x(self):
+    def x(self) -> float:
         return self[0]
 
     @property
-    def y(self):
+    def y(self) -> float:
         return self[1]
 
     @property
-    def z(self):
+    def z(self) -> float:
         return self[2]
 
     @x.setter
-    def x(self, value):
+    def x(self, value: float) -> None:
         self[0] = value
 
     @y.setter
-    def y(self, value):
+    def y(self, value: float) -> None:
         self[1] = value
 
     @z.setter
-    def z(self, value):
+    def z(self, value: float) -> None:
         self[2] = value
 
     def normalized(self) -> "Point":
@@ -41,7 +41,7 @@ class Point(np.ndarray):
 
     def norm2(self) -> float:
         """Compute the norm2 of a point"""
-        return np.linalg.norm([self], 2)
+        return float(np.linalg.norm([self], 2))
 
     def get_local_coord(self, origin: Self, Ox: Self, Oy: Self, Oz: Self) -> "Point":
         """Convert the point from absolute coordinate to local from the perspective of the

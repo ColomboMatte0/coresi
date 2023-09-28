@@ -78,7 +78,7 @@ ALPHA_TV=0;%normalized true image: methode A, alpha_usual=1/s_j0*efficacity_j0
 TV_ITERATION=20;
 
 %%   Energy a priori
-ENERGY_FLAG = 2;               % ANY=0, RANGE=1, KNOWN=2, LINEAR SPECTRAL=3, FIXED SPECTRAL=4
+ENERGY_FLAG = 4;               % ANY=0, RANGE=1, KNOWN=2, LINEAR SPECTRAL=3, FIXED SPECTRAL=4
 if (ENERGY_FLAG==1)            % total energy in some range
   ENERGY_MIN = 1450.5;         % lower bound, keV
   ENERGY_MAX = 1551.5;         % upper bound, keV
