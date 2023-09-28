@@ -15,21 +15,21 @@ class Point(np.ndarray):
     def x(self) -> float:
         return self[0]
 
-    @property
-    def y(self) -> float:
-        return self[1]
-
-    @property
-    def z(self) -> float:
-        return self[2]
-
     @x.setter
     def x(self, value: float) -> None:
         self[0] = value
 
+    @property
+    def y(self) -> float:
+        return self[1]
+
     @y.setter
     def y(self, value: float) -> None:
         self[1] = value
+
+    @property
+    def z(self) -> float:
+        return self[2]
 
     @z.setter
     def z(self, value: float) -> None:
