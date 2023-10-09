@@ -1,8 +1,8 @@
 import sys
 from logging import getLogger
+from pathlib import Path
 
 import yaml
-from pathlib import Path
 
 from camera import Camera
 from event import Event
@@ -106,6 +106,12 @@ class LM_MLEM(object):
         checkpoint_dir: Path = Path("checkpoints"),
     ):
         """docstring for run"""
+
+        if first_iter > last_iter:
+            logger.fatal(
+                f"The first iteration should be less than the last iteration, first is {first_iter} and last is {last_iter}"
+            )
+            sys.exit(1)
         # Was lambda in C++ but lambda is a reserved keyword in Python
         result = Image(self.config_volume, init="ones")
 
