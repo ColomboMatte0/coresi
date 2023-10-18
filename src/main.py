@@ -1,7 +1,9 @@
 import argparse
 import logging
+import socket
 import sys
 import time
+from os import environ
 from pathlib import Path
 
 import yaml
@@ -30,7 +32,11 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-file_handler = logging.FileHandler(filename="coresi.log", mode="w")
+job_name = environ["PBS_JOBID"] if "PBS_JOBID" in environ else "local"
+file_handler = logging.FileHandler(
+    filename="_".join(["coresi", job_name, str(int(time.time())) + ".log"]),
+    mode="w",
+)
 stdout_handler = logging.StreamHandler()
 handlers = (file_handler, stdout_handler)
 
@@ -41,6 +47,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("CORESI")
+logger.info(f"Starting job {job_name} on {socket.gethostname()}")
 
 logger.info(f"Reading configuration file {args.config}")
 try:
