@@ -1,9 +1,11 @@
-from math import sqrt
+from math import acos, sqrt
 
-import numpy as np
+import torch
 
 from camera import Camera, DetectorType
 from point import Point
+
+torch.set_grad_enabled(False)
 
 
 class Event(object):
@@ -25,7 +27,9 @@ class Event(object):
         # This variable hold the xsection for the second hit. This is also
         # used as a pseudo boolean flag to skip incompatible energies
         # TODO: rename
-        self.xsection = np.repeat(-1.0, self.n_energies)
+        self.xsection = torch.tensor(
+            [1.0 for _ in range(self.n_energies)], dtype=torch.float
+        )
         self.id = str(line_idx)
         self.tol = tol
         if format == "GATE":
@@ -66,7 +70,7 @@ class Event(object):
         if self.cosbeta < -1 or self.cosbeta > 1:
             raise ValueError("Invalid cosbeta")
         self.sinbeta = sqrt(1 - self.cosbeta**2)
-        self.beta = np.arccos(self.cosbeta)
+        self.beta = acos(self.cosbeta)
 
         self.energy_bin = self.get_position_energy(self.E0, self.tol)
         self.xsection[0 : self.energy_bin] = 0.0

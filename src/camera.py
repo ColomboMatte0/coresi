@@ -3,13 +3,14 @@ from enum import StrEnum
 from logging import getLogger
 from typing import Union
 
+import numpy as np
+import torch
 import yaml
 
-from gpuoptional import array_module
 from point import Point
 
+torch.set_grad_enabled(False)
 logger = getLogger("__main__." + __name__)
-typing = array_module()._typing
 
 
 class DetectorType(StrEnum):
@@ -29,15 +30,15 @@ class Camera(object):
     def __init__(self, attrs: dict, position: dict):
         super(Camera, self).__init__()
 
-        self.xp = array_module()
-
         self.sca_layers = self.setup_scatterers(attrs)
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # There are cases where a scatterer or absorber might be composed of
         # layers of multiple materials. This is not handled currently.
         self.sca_material = Material(attrs["sca_material"])
         self.avogadro, self.m_e, self.r_e = self.get_physics_constants()
         constants_material_sca = self.read_constants_material(self.sca_material)
-        self.sca_nist = self.xp.array(constants_material_sca.pop("NIST"))
+        self.sca_nist = torch.tensor(constants_material_sca.pop("NIST"), device=device)
+        self.sca_nist_slice = self.sca_nist[:, 0].contiguous()
         # effective density of electrons, number of electrons per unit mass
         self.sca_n_eff = self.get_n_eff(**constants_material_sca)
         self.sca_density = constants_material_sca["density"]
@@ -45,7 +46,8 @@ class Camera(object):
         self.abs_layers = self.setup_absorbers(attrs)
         self.abs_material = Material(attrs["abs_material"])
         constants_material_abs = self.read_constants_material(self.abs_material)
-        self.abs_nist = self.xp.array(constants_material_abs.pop("NIST"))
+        self.abs_nist = torch.tensor(constants_material_abs.pop("NIST"), device=device)
+        self.abs_nist_slice = self.abs_nist[:, 0].contiguous()
         self.abs_n_eff = self.get_n_eff(**constants_material_abs)
         self.abs_density = constants_material_abs["density"]
         logger.debug("abs layers list" + str([str(layer) for layer in self.abs_layers]))
@@ -129,77 +131,102 @@ class Camera(object):
         # ENRIQUE: Why avogadro number is involved, and issue with the units
         # compared to regular KN formula and Enrique's thesis?
         return (
-            (self.xp.power(self.r_e, 2) / 2.0)
-            * self.xp.power(P, 2)
-            * (P + 1.0 / P - 1.0 + self.xp.power(cosbeta, 2))
+            (np.power(self.r_e, 2) / 2.0)
+            * torch.pow(P, 2)
+            * (P + 1.0 / P - 1.0 + torch.pow(cosbeta, 2))
         )
 
     def get_photo_diff_xsection(
         self, energy: int, detector_type: DetectorType
     ) -> float:
         table_index, nist_table = self.get_table_and_index(energy, detector_type)
-        return nist_table[table_index][2] + (
-            nist_table[table_index + 1][2] - nist_table[table_index][2]
-        ) * ((energy / 1000) - nist_table[table_index][0]) / (
-            nist_table[table_index + 1][0] - nist_table[table_index][0]
-        )
+        if isinstance(energy, float):
+            return (
+                nist_table[table_index][2]
+                + (nist_table[table_index + 1][2] - nist_table[table_index][2])
+                * ((energy / 1000) - nist_table[table_index][0])
+            ) / (nist_table[table_index + 1][0] - nist_table[table_index][0])
+        else:
+            return nist_table[table_index, 2] + (
+                nist_table[table_index + 1, 2]
+                - nist_table[table_index, 2]
+                * ((energy / 1000) - nist_table[table_index, 0])
+            ) / (nist_table[table_index + 1, 0] - nist_table[table_index, 0])
 
     def get_pair_diff_xsection(self, energy: int, detector_type: DetectorType) -> float:
         table_index, nist_table = self.get_table_and_index(energy, detector_type)
-        if energy < 1022:
-            return 0
-        return nist_table[table_index][3] + (
-            nist_table[table_index + 1][3] - nist_table[table_index][3]
-        ) * ((energy / 1000) - nist_table[table_index][0]) / (
-            nist_table[table_index + 1][0] - nist_table[table_index][0]
-        )
+        if torch.all(energy < 1022):
+            return torch.zeros_like(energy)
+        if isinstance(energy, float):
+            return nist_table[table_index][3] + (
+                nist_table[table_index + 1][3] - nist_table[table_index][3]
+            ) * ((energy / 1000) - nist_table[table_index][0]) / (
+                nist_table[table_index + 1][0] - nist_table[table_index][0]
+            )
+        else:
+            return nist_table[table_index, 3] + (
+                nist_table[table_index + 1, 3] - nist_table[table_index, 3]
+            ) * ((energy / 1000) - nist_table[table_index, 0]) / (
+                nist_table[table_index + 1, 0] - nist_table[table_index, 0]
+            )
 
     def get_total_diff_xsection(
         self, energy: int, detector_type: DetectorType
     ) -> float:
         table_index, nist_table = self.get_table_and_index(energy, detector_type)
-        return nist_table[table_index][4] + (
-            nist_table[table_index + 1][4] - nist_table[table_index][4]
-        ) * ((energy / 1000) - nist_table[table_index][0]) / (
-            nist_table[table_index + 1][0] - nist_table[table_index][0]
-        )
+        if isinstance(energy, float):
+            return nist_table[table_index][4] + (
+                nist_table[table_index + 1][4] - nist_table[table_index][4]
+            ) * ((energy / 1000) - nist_table[table_index][0]) / (
+                nist_table[table_index + 1][0] - nist_table[table_index][0]
+            )
+        else:
+            return nist_table[table_index, 4] + (
+                nist_table[table_index + 1, 4] - nist_table[table_index, 4]
+            ) * ((energy / 1000) - nist_table[table_index, 0]) / (
+                nist_table[table_index + 1, 0] - nist_table[table_index, 0]
+            )
 
     def get_table_and_index(
         self, energy: float, detector_type: DetectorType
-    ) -> tuple[int, typing.ArrayLike]:
+    ) -> tuple[int, torch.tensor]:
         # Convert to MeV
-        energy /= 1000
+        # Divide this way to avoid modify by reference
+        energy = energy / 1000
         if detector_type == DetectorType.SCA:
-            if energy < self.sca_nist[0][0]:
+            if (isinstance(energy, float) and energy < self.sca_nist[0][0]) or (
+                not isinstance(energy, float) and energy.min() < self.sca_nist[0][0]
+            ):
                 logger.fatal(
                     f"Table index energy of {str(energy)} below minimum in NIST table"
                 )
                 sys.exit(1)
-            elif energy > self.sca_nist[65][0]:
+            elif (isinstance(energy, float) and energy > self.sca_nist[65][0]) or (
+                not isinstance(energy, float) and energy.max() > self.sca_nist[65][0]
+            ):
                 logger.fatal(
                     f"Table index energy of {str(energy)} above maximum in NIST table = {str(self.sca_nist[65][0])}"
                 )
                 sys.exit(1)
-                return 1
-            for idx, nist in enumerate(self.sca_nist[:, 0]):
-                if nist > energy:
-                    return idx - 1, self.sca_nist
-            return 1, self.sca_nist
+
+            return torch.searchsorted(self.sca_nist_slice, energy) - 1, self.sca_nist
         else:
-            if energy < self.abs_nist[0][0]:
+            if (isinstance(energy, float) and energy < self.abs_nist[0][0]) or (
+                not isinstance(energy, float) and energy.min() < self.abs_nist[0][0]
+            ):
                 logger.fatal(
                     f"Table index energy of {str(energy)} below minimum in NIST table"
                 )
                 sys.exit(1)
-            elif energy > self.abs_nist[65][0]:
+            elif (isinstance(energy, float) and energy > self.abs_nist[65][0]) or (
+                not isinstance(energy, float) and energy.max() > self.abs_nist[65][0]
+            ):
                 logger.fatal(
                     f"Table index energy of {str(energy)} above maximum in NIST table = {str(self.abs_nist[65][0])}"
                 )
-                return 1, self.abs_nist
-            for idx, nist in enumerate(self.abs_nist[:, 0]):
-                if nist > energy:
-                    return idx - 1, self.abs_nist
-            return 1, self.abs_nist
+                sys.exit(1)
+
+            return torch.searchsorted(self.abs_nist_slice, energy) - 1, self.abs_nist
 
     @staticmethod
     def get_physics_constants() -> tuple[float, float, float]:

@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-import numpy as np
+import torch
 import yaml
 
 from image import Image
@@ -22,5 +22,7 @@ with open(args.config, "r") as fh:
     config = yaml.safe_load(fh)
 
 image = Image(len(config["E0"]), config["volume"])
-image.values = np.load(args.image)
-image.display_z()
+image.values = torch.load(args.image, map_location=torch.device("cpu"))
+
+for e in range(image.values.shape[0]):
+    image.display_z(energy=e, title=f" {str(config['E0'][e])} keV")

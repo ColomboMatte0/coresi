@@ -26,7 +26,7 @@ class LoadData(unittest.TestCase):
         events = read_data_file(
             config["data_file"],
             n_events=1,
-            E0=-1,
+            E0=[-1],
             cameras=cameras,
             energy_range=config["energy_range"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
@@ -92,7 +92,7 @@ class LoadData(unittest.TestCase):
             ) as data_fh:
                 for line_n, line in enumerate(data_fh):
                     if line_n == 25:
-                        event = Event(line_n, line, -1)
+                        event = Event(line_n, line, [-1])
                         event.set_camera_index(cameras)
         self.assertEqual(
             str(cm.exception),

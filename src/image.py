@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
+import torch
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from gpuoptional import array_module
 from point import Point
+
+torch.set_grad_enabled(False)
 
 
 class Image:
@@ -16,32 +18,31 @@ class Image:
         self.center = Point(*config["volume_centre"])
         # Bottom left corner
         self.corner = self.center - (self.dim_in_cm / 2)
-        self.xp = array_module()
+
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         # Contains the actual values of the image
         if init == "zeros":
-            self.values = self.xp.zeros(
-                (
-                    n_energies,
-                    self.dim_in_voxels.x,
-                    self.dim_in_voxels.y,
-                    self.dim_in_voxels.z,
-                )
+            self.values = torch.zeros(
+                n_energies,
+                self.dim_in_voxels.x,
+                self.dim_in_voxels.y,
+                self.dim_in_voxels.z,
+                device=device,
             )
         if init == "ones":
-            self.values = self.xp.ones(
-                (
-                    n_energies,
-                    self.dim_in_voxels.x,
-                    self.dim_in_voxels.y,
-                    self.dim_in_voxels.z,
-                )
+            self.values = torch.ones(
+                n_energies,
+                self.dim_in_voxels.x,
+                self.dim_in_voxels.y,
+                self.dim_in_voxels.z,
+                device=device,
             )
 
     def display_x(self, slice: int = 0, **params):
         fig, ax = plt.subplots()
         mappable = ax.imshow(
-            self.values[slice, :, :].T,
+            self.values[slice, :, :].T.cpu(),
             origin="lower",
             # TODO documentj extent and fix centering
             extent=[
@@ -61,7 +62,7 @@ class Image:
     def display_y(self, slice: int = 0, **params):
         fig, ax = plt.subplots()
         mappable = ax.imshow(
-            self.values[:, slice, :].T,
+            self.values[:, slice, :].T.cpu(),
             origin="lower",
             extent=[
                 self.center.x - self.dim_in_cm.x / 2,
@@ -80,7 +81,7 @@ class Image:
     def display_z(self, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
         mappable = ax.imshow(
-            self.values[energy, :, :, slice].T,
+            self.values[energy, :, :, slice].T.cpu(),
             origin="lower",
             extent=[
                 self.center.x - self.dim_in_cm.x / 2,
