@@ -140,17 +140,20 @@ class Camera(object):
         self, energy: int, detector_type: DetectorType
     ) -> float:
         table_index, nist_table = self.get_table_and_index(energy, detector_type)
-        if isinstance(energy, float):
-            return (
-                nist_table[table_index][2]
-                + (nist_table[table_index + 1][2] - nist_table[table_index][2])
-                * ((energy / 1000) - nist_table[table_index][0])
-            ) / (nist_table[table_index + 1][0] - nist_table[table_index][0])
+        if energy.dim() == 0:
+            # Indexing depends on whether table_index is a float or a vector
+            return nist_table[table_index][2] + (
+                nist_table[table_index + 1][2] - nist_table[table_index][2]
+            ) * ((energy / 1000) - nist_table[table_index][0]) / (
+                nist_table[table_index + 1][0] - nist_table[table_index][0]
+            )
         else:
             return nist_table[table_index, 2] + (
                 nist_table[table_index + 1, 2]
                 - nist_table[table_index, 2]
                 * ((energy / 1000) - nist_table[table_index, 0])
+                # What if the values are identical? Div by zero? Ask Etienne
+                # about this. How to interpret NIST array values?
             ) / (nist_table[table_index + 1, 0] - nist_table[table_index, 0])
 
     def get_pair_diff_xsection(self, energy: int, detector_type: DetectorType) -> float:
@@ -191,7 +194,7 @@ class Camera(object):
         self, energy: float, detector_type: DetectorType
     ) -> tuple[int, torch.tensor]:
         # Convert to MeV
-        # Divide this way to avoid modify by reference
+        # Divide this way to avoid modifying by reference
         energy = energy / 1000
         if detector_type == DetectorType.SCA:
             if (isinstance(energy, float) and energy < self.sca_nist[0][0]) or (
@@ -209,6 +212,7 @@ class Camera(object):
                 )
                 sys.exit(1)
 
+            # TODO explain this
             return torch.searchsorted(self.sca_nist_slice, energy) - 1, self.sca_nist
         else:
             if (isinstance(energy, float) and energy < self.abs_nist[0][0]) or (
