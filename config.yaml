@@ -86,7 +86,7 @@ volume:
 
 lm_mlem:
   cone_thickness: 'angular' # angular or parallel
-  model: 'cos0rho2'
+  model: 'cos0rho2' # Either cos0rho0, cos0rho2 or cos1rho2
   last_iter: 2
   first_iter: 0
   save_every: 76
