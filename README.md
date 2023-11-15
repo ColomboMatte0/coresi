@@ -11,16 +11,13 @@ conda activate coresi
 make tests
 ```
 
-CORESI can run on GPU or CPU by using either cupy or numpy. If not requested
-explicitly, numpy is loaded and thus the CPU is used.
+CORESI can run on GPU or CPU.
 
-Set the environment variable ARRAY_MODULE to "cupy" to run on gpu. For example: 
+Make use the environment variable `CUDA_VISIBLE_DEVICES` to tell which GPU
+PyTorch should use.
 
 ```bash
-ARRAY_MODULE="cupy" python src/main.py
-
-# OR
-
-export ARRAY_MODULE="cupy"
-python src/main.py
+CUDA_VISIBLE_DEVICES="1" python src/main.py
 ```
+
+See the `config.yaml` file for configuring CORESI.
