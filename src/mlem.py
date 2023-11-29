@@ -61,6 +61,7 @@ class LM_MLEM(object):
             )
             sys.exit(1)
 
+        self.n_skipped_events = 0
         self.model = model
         self.cameras = cameras
         self.events = events

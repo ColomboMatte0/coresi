@@ -25,7 +25,7 @@ cameras:
   common_attributes:
     n_sca_layers: 7
     sca_material: Si
-    abs_material: BGO
+    abs_material: Si
     sca_layer_0:
       center: [0, 0, -10]
       size: [9.0, 9.0, 0.2]
@@ -72,8 +72,8 @@ volume:
   volume_centre: [0, 0, 0]
 
 lm_mlem:
-  cone_thickness: 'parallel' # angular or parallel
-  model: 'cos0rho0'
+  cone_thickness: 'angular' # angular or parallel
+  model: 'cos1rho2'
   last_iter: 0
   first_iter: 0
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
