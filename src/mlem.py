@@ -11,7 +11,7 @@ from camera import Camera, DetectorType
 from event import Event
 from image import Image
 
-logger = getLogger("__main__." + __name__)
+logger = getLogger("CORESI")
 torch.set_grad_enabled(False)
 
 

@@ -45,7 +45,8 @@ job_name = environ["PBS_JOBID"] if "PBS_JOBID" in environ else "local"
 log_dir = Path(config["log_dir"])
 log_dir.mkdir(parents=True, exist_ok=True)
 file_handler = logging.FileHandler(
-    filename=log_dir / "_".join(["coresi", job_name, str(int(time.time())) + ".log"]),
+    filename=log_dir
+    / "_".join(["coresi", job_name, str(int(time.time())) + ".log"]),
     mode="w",
 )
 handlers = (file_handler, logging.StreamHandler())

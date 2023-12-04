@@ -6,6 +6,8 @@ from point import Point
 
 torch.set_grad_enabled(False)
 
+plt.set_loglevel("info")
+
 
 class Image:
     """docstring for Image"""

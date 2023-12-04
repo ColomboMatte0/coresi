@@ -4,7 +4,7 @@ from pathlib import Path
 from camera import Camera
 from event import Event
 
-logger = getLogger("__main__." + __name__)
+logger = getLogger("CORESI")
 
 
 def read_data_file(
