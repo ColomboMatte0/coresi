@@ -1,4 +1,5 @@
 data_file: /home/lequertier/projects/coresi_git/CodeC++/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
+log_dir: 'logs'
 data_type: 'MACACO'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
 E0: [140,245, 364, 511]

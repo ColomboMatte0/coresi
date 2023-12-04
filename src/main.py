@@ -32,14 +32,23 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+
+try:
+    with open(args.config, "r") as fh:
+        config = yaml.safe_load(fh)
+except IOError as e:
+    print(f"Failed to open the configuration file: {e}")
+    sys.exit(1)
+
+
 job_name = environ["PBS_JOBID"] if "PBS_JOBID" in environ else "local"
+log_dir = Path(config["log_dir"])
+log_dir.mkdir(parents=True, exist_ok=True)
 file_handler = logging.FileHandler(
-    filename="_".join(["coresi", job_name, str(int(time.time())) + ".log"]),
+    filename=log_dir / "_".join(["coresi", job_name, str(int(time.time())) + ".log"]),
     mode="w",
 )
-stdout_handler = logging.StreamHandler()
-handlers = (file_handler, stdout_handler)
-
+handlers = (file_handler, logging.StreamHandler())
 logging.basicConfig(
     level=logging.INFO if not args.verbose else logging.DEBUG,
     format="[%(asctime)s] %(filename)s:%(lineno)d %(levelname)s - %(message)s",
@@ -48,14 +57,8 @@ logging.basicConfig(
 
 logger = logging.getLogger("CORESI")
 logger.info(f"Starting job {job_name} on {socket.gethostname()}")
+logger.info(f"Read configuration file {args.config}")
 
-logger.info(f"Reading configuration file {args.config}")
-try:
-    with open(args.config, "r") as fh:
-        config = yaml.safe_load(fh)
-except IOError as e:
-    logger.fatal(f"Failed to open the configuration file: {e}")
-    sys.exit(1)
 
 # Setup the cameras' list according to their characteristics
 cameras = setup_cameras(config["cameras"])
