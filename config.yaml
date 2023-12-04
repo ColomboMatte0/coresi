@@ -1,7 +1,10 @@
 data_file: /home/lequertier/projects/coresi_git/CodeC++/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
 data_type: 'MACACO'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
-E0: [140]
+E0: [140,245, 364, 511]
+
+n_events: 1000
+starts_at: 0
 
 # Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
 # tecteurs.
@@ -81,12 +84,12 @@ cameras:
 
 volume:
   volume_dimensions: [20, 20, 0.4] # In centimeters
-  n_voxels: [100, 100, 20]
+  n_voxels: [50, 50, 1]
   volume_centre: [0, 0, 0]
 
 lm_mlem:
   cone_thickness: 'angular' # angular or parallel
-  model: 'cos0rho2' # Either cos0rho0, cos0rho2 or cos1rho2
+  model: 'cos1rho2' # Either cos0rho0, cos0rho2 or cos1rho2
   last_iter: 2
   first_iter: 0
   save_every: 76

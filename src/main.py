@@ -64,13 +64,13 @@ logger.info(f"Processing {config['data_file']}")
 # Process events from the data file and associate them with the cameras
 events = read_data_file(
     Path(config["data_file"]),
-    n_events=100,
+    n_events=config["n_events"],
     E0=config["E0"],
     cameras=cameras,
     # Needed to remove events with energy outside of a given range
     remove_out_of_range_energies=config["remove_out_of_range_energies"],
     energy_range=config["energy_range"],
-    start_position=0,
+    start_position=config["starts_at"],
     tol=config["energy_threshold"],
 )
 
