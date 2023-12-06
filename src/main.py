@@ -29,6 +29,11 @@ parser.add_argument(
     help="Path to the configuration file",
     type=Path,
 )
+parser.add_argument(
+    "--sensitivity",
+    action="store_true",
+    help="Compute the sensitivity and quits",
+)
 
 args = parser.parse_args()
 
@@ -63,6 +68,33 @@ logger.info(f"Read configuration file {args.config}")
 
 # Setup the cameras' list according to their characteristics
 cameras = setup_cameras(config["cameras"])
+
+checkpoint_dir = Path(config["lm_mlem"]["checkpoint_dir"])
+checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+mlem = LM_MLEM(
+    config["lm_mlem"],
+    config["volume"],
+    cameras,
+    args.config.name.split(".")[0],
+    config["E0"],
+    config["energy_threshold"],
+)
+
+
+if args.sensitivity:
+    _ = LM_MLEM.compute_sensitivity(
+        config["E0"],
+        config["volume"],
+        cameras,
+        mlem.SM_line,
+        config["lm_mlem"],
+        checkpoint_dir,
+    )
+    sys.exit(0)
+
+mlem.init_sensitiviy(config["lm_mlem"], checkpoint_dir)
+
 logger.info(f"Processing {config['data_file']}")
 
 # Process events from the data file and associate them with the cameras
@@ -86,29 +118,17 @@ logger.info(f"Took {time.time() - start} ms to read the data")
 start = time.time()
 
 logger.info("Doing MLEM")
-mlem = LM_MLEM(
-    config["lm_mlem"],
-    config["volume"],
-    cameras,
-    events,
-    # Supply the sensitivity file if provided
-    config["sensitivity_file"] if "sensitivity_file" in config else None,
-    args.config.name.split(".")[0],
-    config["E0"],
-    config["energy_threshold"],
-)
 
-checkpoint_dir = Path(config["lm_mlem"]["checkpoint_dir"])
-checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
 result = mlem.run(
+    events,
     config["lm_mlem"]["last_iter"],
     config["lm_mlem"]["first_iter"],
     config["lm_mlem"]["save_every"],
     checkpoint_dir,
 )
 
+logger.info(f"Took {time.time() - start} ms for MLEM")
+
 for e in range(len(config["E0"])):
     result.display_z(energy=e)
-
-logger.info(f"Took {time.time() - start} ms for MLEM")

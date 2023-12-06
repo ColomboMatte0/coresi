@@ -17,9 +17,6 @@ remove_out_of_range_energies: False
 # otherwise
 energy_range: [120, 150]
 
-# Supply a sensitivity file. Needs to have the same size as the number of
-# voxels in the volume
-# sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
 
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 # Up to 5 absorbers are implemented
@@ -89,7 +86,7 @@ volume:
   volume_centre: [0, 0, 0]
 
 lm_mlem:
-  cone_thickness: 'angular' # angular or parallel
+  cone_thickness: 'angular' # angular, angular_precise or parallel
   model: 'cos1rho2' # Either cos0rho0, cos0rho2 or cos1rho2
   last_iter: 2
   first_iter: 0
@@ -97,3 +94,9 @@ lm_mlem:
   checkpoint_dir: checkpoints
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
   width_factor: 1 # Used to artificially modify the spread of the cone
+  sensitivity: true
+  sensitivity_model: like_system_matrix # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+  sensitivity_point_samples: 1000
+  # Supply a sensitivity file. Needs to have the same size as the number of
+  # voxels in the volume
+  # sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw

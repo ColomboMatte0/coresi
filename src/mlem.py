@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import yaml
 
+import sensitivity as sensitivity_models
 from camera import Camera, DetectorType
 from event import Event
 from image import Image
@@ -23,8 +24,6 @@ class LM_MLEM(object):
         config_mlem: dict,
         config_volume: dict,
         cameras: list[Camera],
-        events: list[Event],
-        sensitivity_file: str,
         run_name: str,
         energies: list[int],
         tol: float,
@@ -57,14 +56,13 @@ class LM_MLEM(object):
 
         else:
             logger.fatal(
-                f"Model {config_mlem['model']} is not supported, either use cos0rho2 or cos1rho2"
+                f"Model {config_mlem['model']} is not supported, either use cos0rho0, cos0rho2 or cos1rho2"
             )
             sys.exit(1)
 
         self.n_skipped_events = 0
         self.model = model
         self.cameras = cameras
-        self.events = events
         self.run_name = run_name
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.m_e = torch.tensor(
@@ -84,11 +82,6 @@ class LM_MLEM(object):
 
         self.config_volume = config_volume
         self.line = Image(self.n_energies, self.config_volume)
-        self.sensitivity = Image(self.n_energies, self.config_volume, init="ones")
-        if sensitivity_file is not None:
-            self.sensitivity.values = torch.from_numpy(
-                np.fromfile(sensitivity_file)
-            ).reshape(self.sensitivity.values.shape)
 
         if config_mlem["cone_thickness"] == "parallel":
             self.sigma_beta = (
@@ -179,7 +172,8 @@ class LM_MLEM(object):
                 self.sigma_beta_1 = self.sigma_beta_1[0]
                 self.sigma_beta_2 = self.sigma_beta_2[0]
                 self.limit_sigma = (
-                    max([self.sigma_beta_1, self.sigma_beta_2]) * config_mlem["n_sigma"]
+                    max([self.sigma_beta_1, self.sigma_beta_2])
+                    * config_mlem["n_sigma"]
                 )
                 self.SM_line = self.SM_angular_thickness
             elif config_mlem["cone_thickness"] == "angular":
@@ -189,33 +183,39 @@ class LM_MLEM(object):
 
         logger.info(f"Using algorithm {self.SM_line.__name__}")
 
-        # Sample points along each volume dimension. use voxel size to center
-        # the points on the voxels
-        self.x = torch.linspace(
-            self.line.corner.x + (self.line.voxel_size.x / 2),
-            self.line.corner.x + self.line.dim_in_cm.x - (self.line.voxel_size.x / 2),
+        x, y, z = LM_MLEM.create_mesh_axes(
+            [
+                self.line.corner.x + (self.line.voxel_size.x / 2),
+                self.line.corner.x
+                + self.line.dim_in_cm.x
+                - (self.line.voxel_size.x / 2),
+            ],
             self.line.dim_in_voxels.x,
-        )
-        self.y = torch.linspace(
-            self.line.corner.y + (self.line.voxel_size.y / 2),
-            self.line.corner.y + self.line.dim_in_cm.y - (self.line.voxel_size.y / 2),
+            [
+                self.line.corner.y + (self.line.voxel_size.y / 2),
+                self.line.corner.y
+                + self.line.dim_in_cm.y
+                - (self.line.voxel_size.y / 2),
+            ],
             self.line.dim_in_voxels.y,
-        )
-        self.z = torch.linspace(
-            self.line.corner.z + (self.line.voxel_size.z / 2),
-            self.line.corner.z + self.line.dim_in_cm.z - (self.line.voxel_size.z / 2),
+            [
+                self.line.corner.z + (self.line.voxel_size.z / 2),
+                self.line.corner.z
+                + self.line.dim_in_cm.z
+                - (self.line.voxel_size.z / 2),
+            ],
             self.line.dim_in_voxels.z,
         )
+
         # Used to go through the volume
-        self.xx, self.yy, self.zz = np.meshgrid(
-            self.x, self.y, self.z, sparse=True, indexing="ij"
-        )
+        self.xx, self.yy, self.zz = np.meshgrid(x, y, z, sparse=True, indexing="ij")
         self.xx = torch.from_numpy(self.xx).to(self.device)
         self.yy = torch.from_numpy(self.yy).to(self.device)
         self.zz = torch.from_numpy(self.zz).to(self.device)
 
     def run(
         self,
+        events: list[Event],
         last_iter: int,
         first_iter: int = 0,
         save_every: int = 10,
@@ -238,7 +238,8 @@ class LM_MLEM(object):
                     f"The first iteration is set to {str(first_iter)}, trying to load {checkpoint_dir / self.run_name}.iter.{str(first_iter - 1)}.npy"
                 )
                 checkpoint = torch.load(
-                    checkpoint_dir / f"{self.run_name}.iter.{str(first_iter - 1)}.npy"
+                    checkpoint_dir
+                    / f"{self.run_name}.iter.{str(first_iter - 1)}.npy"
                 )
             except IOError as e:
                 logger.fatal(f"The checkpoint could not be loaded: {e}")
@@ -261,7 +262,7 @@ class LM_MLEM(object):
         for iter in range(first_iter, last_iter + 1):
             logger.info(f"Iteration {str(iter)}")
             to_delete = []
-            for idx, event in enumerate(self.events):
+            for idx, event in enumerate(events):
                 try:
                     # Compute the system matrix line.
                     # iter - first_iter is a hacky trick to make SM_line believe that
@@ -269,7 +270,9 @@ class LM_MLEM(object):
                     # because the iter param is only used to check whether we need to
                     # verify if the cone intersect the voxel i.e. if we are at the
                     # first iteration
-                    line = self.SM_line(iter - first_iter, event, self.energies != [-1])
+                    line = self.SM_line(
+                        iter - first_iter, event, self.energies != [-1]
+                    )
                 except ValueError as e:
                     logger.debug(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we know we don't need to
@@ -296,10 +299,12 @@ class LM_MLEM(object):
                         forward_proj = torch.mul(
                             line.values[energy], result.values[energy]
                         ).nansum()
-                        next_result.values[energy] += line.values[energy] / forward_proj
+                        next_result.values[energy] += (
+                            line.values[energy] / forward_proj
+                        )
 
             if len(to_delete) > 0:
-                self.events = np.delete(self.events, to_delete)
+                events = np.delete(events, to_delete)
                 logger.warning(
                     f"Skipped {str(len(to_delete))} events when computing the system matrix at iteration {str(iter)}"
                 )
@@ -368,9 +373,9 @@ class LM_MLEM(object):
         mask = ~mask
         # Apply the Gaussian
         self.line.values[mask] = self.a1 * torch.exp(
-            -self.line.values[mask] ** 2 * 0.5 / self.sigma_beta_1**2
+            -(self.line.values[mask] ** 2) * 0.5 / self.sigma_beta_1**2
         ) + self.a2 * torch.exp(
-            -self.line.values[mask] ** 2 * 0.5 / self.sigma_beta_2**2
+            -(self.line.values[mask] ** 2) * 0.5 / self.sigma_beta_2**2
         )
 
         # lambda / lambda prime
@@ -467,10 +472,10 @@ class LM_MLEM(object):
 
             # Gauss
             self.line.values[idx][mask_cone] = self.a1[idx] * torch.exp(
-                -self.line.values[idx][mask_cone] ** 2
+                -(self.line.values[idx][mask_cone] ** 2)
                 / (2 * self.sigma_beta_1[idx] ** 2)
             ) + self.a2[idx] * torch.exp(
-                -self.line.values[idx][mask_cone] ** 2
+                -(self.line.values[idx][mask_cone] ** 2)
                 / (2 * self.sigma_beta_2[idx] ** 2)
             )
 
@@ -559,7 +564,8 @@ class LM_MLEM(object):
 
                 # Test for pair production
                 if (
-                    abs(self.energies[idx] - (event.E0 + (2 * self.m_e))) < 2 * self.tol
+                    abs(self.energies[idx] - (event.E0 + (2 * self.m_e)))
+                    < 2 * self.tol
                 ):  # with double escape
                     int2Xsect += (
                         camera.abs_density
@@ -637,7 +643,9 @@ class LM_MLEM(object):
                 # The thickness. layer_idx_V1 is in a defined layer i.e. it
                 # will not be in a None absortber layer as this is checked
                 # beforehand
-                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                * (camera.sca_layers + camera.abs_layers)[
+                    event.layer_idx_V1
+                ].thickness
                 # Assume the interaction is the middle of the material in a
                 # orthogonal line?
                 # TODO: take the incident angle into account?
@@ -656,7 +664,9 @@ class LM_MLEM(object):
                     if event.detector_type_V1 == DetectorType.SCA
                     else camera.abs_density
                 )
-                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                * (camera.sca_layers + camera.abs_layers)[
+                    event.layer_idx_V1
+                ].thickness
                 / 2
             ) * torch.exp(
                 -(
@@ -719,7 +729,9 @@ class LM_MLEM(object):
                 )
             )
 
-            self.line.values[idx][mask_cone] = kbl_j * self.line.values[idx][mask_cone]
+            self.line.values[idx][mask_cone] = (
+                kbl_j * self.line.values[idx][mask_cone]
+            )
 
         if iter == 0 and torch.all(event.xsection == 0.0):
             raise ValueError(
@@ -793,10 +805,10 @@ class LM_MLEM(object):
 
             # Gauss
             self.line.values[idx][mask_cone] = self.a1[idx] * torch.exp(
-                -self.line.values[idx][mask_cone] ** 2
+                -(self.line.values[idx][mask_cone] ** 2)
                 / (2 * self.sigma_beta_1[idx] ** 2)
             ) + self.a2[idx] * torch.exp(
-                -self.line.values[idx][mask_cone] ** 2
+                -(self.line.values[idx][mask_cone] ** 2)
                 / (2 * self.sigma_beta_2[idx] ** 2)
             )
 
@@ -865,9 +877,7 @@ class LM_MLEM(object):
             cos_beta_2 = 1.0 - (
                 # E_gamma - event.Eg is the energy after the 2nd Compton
                 # scaterring
-                self.m_e
-                * event.Eg
-                / (E_gamma * (E_gamma - event.Eg))
+                self.m_e * event.Eg / (E_gamma * (E_gamma - event.Eg))
             )
             mask_partial = ~mask_tot & (torch.abs(cos_beta_2) <= 1.0)
             if torch.any(mask_partial):
@@ -975,7 +985,9 @@ class LM_MLEM(object):
                 # The thickness. layer_idx_V1 is in a defined layer i.e. it
                 # will not be in a None absortber layer as this is checked
                 # beforehand
-                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                * (camera.sca_layers + camera.abs_layers)[
+                    event.layer_idx_V1
+                ].thickness
                 # Assume the interaction is the middle of the material in a
                 # orthogonal line?
                 # TODO: take the incident angle into account?
@@ -988,7 +1000,9 @@ class LM_MLEM(object):
             prob_interactions *= torch.exp(
                 -camera.get_total_diff_xsection(E_gamma, event.detector_type_V1)
                 * density_V1
-                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                * (camera.sca_layers + camera.abs_layers)[
+                    event.layer_idx_V1
+                ].thickness
                 / 2
             ) * torch.exp(
                 -(
@@ -1046,7 +1060,9 @@ class LM_MLEM(object):
 
         return self.line
 
-    def SM_parallel_thickness(self, iter: int, event: Event, known_E0: bool) -> Image:
+    def SM_parallel_thickness(
+        self, iter: int, event: Event, known_E0: bool
+    ) -> Image:
         """docstring for SM_parallel_thickness"""
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
@@ -1091,7 +1107,7 @@ class LM_MLEM(object):
         mask = ~mask
         # Apply the Gaussian
         self.line.values[mask] = torch.exp(
-            -self.line.values[mask] ** 2 * 0.5 / self.sigma_beta**2
+            -(self.line.values[mask] ** 2) * 0.5 / self.sigma_beta**2
         )
 
         if self.compute_theta_j:
@@ -1279,7 +1295,8 @@ class LM_MLEM(object):
 
                 # Test for pair production
                 if (
-                    abs(self.energies[idx] - (event.E0 + (2 * self.m_e))) < 2 * self.tol
+                    abs(self.energies[idx] - (event.E0 + (2 * self.m_e)))
+                    < 2 * self.tol
                 ):  # with double escape
                     int2Xsect += (
                         camera.abs_density
@@ -1345,7 +1362,9 @@ class LM_MLEM(object):
                 # The thickness. layer_idx_V1 is in a defined layer i.e. it
                 # will not be in a None absortber layer as this is checked
                 # beforehand
-                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                * (camera.sca_layers + camera.abs_layers)[
+                    event.layer_idx_V1
+                ].thickness
                 # Assume the interaction is the middle of the material in a
                 # orthogonal line?
                 # TODO: take the incident angle into account?
@@ -1364,7 +1383,9 @@ class LM_MLEM(object):
                     if event.detector_type_V1 == DetectorType.SCA
                     else camera.abs_density
                 )
-                * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
+                * (camera.sca_layers + camera.abs_layers)[
+                    event.layer_idx_V1
+                ].thickness
                 / 2
             ) * torch.exp(
                 -(
@@ -1437,7 +1458,8 @@ class LM_MLEM(object):
                 int2Xsect
                 * kbl_j[mask_cone]
                 * torch.exp(
-                    -self.line.values[idx][mask_cone] ** 2 / (2 * self.sigma_beta**2)
+                    -(self.line.values[idx][mask_cone] ** 2)
+                    / (2 * self.sigma_beta**2)
                 )
             )
 
@@ -1448,10 +1470,128 @@ class LM_MLEM(object):
 
         return self.line
 
-    def read_constants(self, constants_filename: str):
+    def read_constants(self, constants_filename: str) -> dict:
         try:
             with open(constants_filename, "r") as fh:
                 return yaml.safe_load(fh)
         except IOError as e:
             logger.fatal(f"Failed to open the constants file: {e}")
             sys.exit(1)
+
+    def init_sensitiviy(self, config_mlem: dict, checkpoint_dir: Path) -> None:
+        self.sensitivity = Image(self.n_energies, self.config_volume, init="ones")
+        if (
+            config_mlem["sensitivity"]
+            and "sensitivity_file" in config_mlem
+            and config_mlem["sensitivity_file"] is not None
+        ):
+            logger.info(
+                f"Taking sensitivity from file {config_mlem['sensitivity_file']}"
+            )
+            self.sensitivity.values = torch.from_numpy(
+                np.fromfile(config_mlem["sensitivity_file"])
+            ).reshape(self.sensitivity.values.shape)
+        elif config_mlem["sensitivity"]:
+            self.sensitivity.values = LM_MLEM.compute_sensitivity(
+                self.energies,
+                self.config_volume,
+                self.cameras,
+                self.SM_line,
+                config_mlem,
+                checkpoint_dir,
+            )
+        else:
+            logger.info("Sensivitiy is disabled, setting it to ones")
+
+    @staticmethod
+    def create_mesh_axes(
+        x_range: tuple,
+        x_steps: int,
+        y_range: tuple,
+        y_steps: int,
+        z_range: tuple,
+        z_steps: int,
+    ) -> [torch.Tensor, torch.Tensor, torch.Tensor]:
+        # Sample points along each volume dimension. use voxel size to center
+        # the points on the voxels
+        return (
+            torch.linspace(*x_range, x_steps),
+            torch.linspace(*y_range, y_steps),
+            torch.linspace(*z_range, z_steps),
+        )
+
+    @staticmethod
+    def compute_sensitivity(
+        energies: list,
+        volume_config: dict,
+        cameras: list[Camera],
+        SM_line: callable,
+        config_mlem: dict,
+        checkpoint_dir: Path,
+    ) -> torch.Tensor:
+        """docstring for compute sensitivity"""
+        sensitivity = Image(len(energies), volume_config, init="ones")
+        x, y, z = LM_MLEM.create_mesh_axes(
+            [
+                sensitivity.corner.x + (sensitivity.voxel_size.x / 2),
+                sensitivity.corner.x
+                + sensitivity.dim_in_cm.x
+                - (sensitivity.voxel_size.x / 2),
+            ],
+            sensitivity.dim_in_voxels.x,
+            [
+                sensitivity.corner.y + (sensitivity.voxel_size.y / 2),
+                sensitivity.corner.y
+                + sensitivity.dim_in_cm.y
+                - (sensitivity.voxel_size.y / 2),
+            ],
+            sensitivity.dim_in_voxels.y,
+            [
+                sensitivity.corner.z + (sensitivity.voxel_size.z / 2),
+                sensitivity.corner.z
+                + sensitivity.dim_in_cm.z
+                - (sensitivity.voxel_size.z / 2),
+            ],
+            sensitivity.dim_in_voxels.z,
+        )
+
+        if config_mlem["sensitivity_model"] == "solid_angle":
+            logger.info("Computing sensitivity values using solid angle")
+            sensitivity.values = sensitivity_models.block(
+                cameras[0], volume_config, x, y, z
+            )
+            # With this model the sensitivity is the same for all energies
+            sensitivity.values = sensitivity.values.repeat(len(energies), 1, 1, 1)
+        elif config_mlem["sensitivity_model"] == "solid_angle_with_attn":
+            logger.info("Computing sensitivity values using layers attenuation")
+            sensitivity.values = sensitivity_models.attenuation_exp(
+                cameras[0], volume_config, x, y, z
+            )
+            # With this model the sensitivity is the same for all energies
+            sensitivity.values = sensitivity.values.repeat(len(energies), 1, 1, 1)
+        elif (
+            config_mlem["sensitivity"]
+            and config_mlem["sensitivity_model"] == "like_system_matrix"
+        ):
+            logger.info(
+                f"Computing sensitivity values with a Monte Carlo simulation and {SM_line.__name__}"
+            )
+            sensitivity.values = sensitivity_models.valencia_4D(
+                cameras[0],
+                volume_config,
+                x,
+                y,
+                z,
+                energies,
+                SM_line,
+                point_samples=config_mlem["sensitivity_point_samples"],
+            )
+
+        logger.info(
+            f"Sensitivity done, saving to {str(checkpoint_dir / 'sensitivity.npy')}"
+        )
+        torch.save(
+            sensitivity.values,
+            checkpoint_dir / "sensitivity.npy",
+        )
+        return sensitivity.values

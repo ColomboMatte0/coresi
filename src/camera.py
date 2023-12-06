@@ -65,9 +65,11 @@ class Camera(object):
 
         # TODO: The camera might be translated, the center might not be x: 0 and
         # y:0
+        # The layers are assumed to be x and y aligned with same centers
         self.sca_centre = Point(
-            0.0,
-            0.0,
+            self.sca_layers[0].center.x,
+            self.sca_layers[0].center.y,
+            # TODO translate by frame origin
             (self.sca_layers[-1].center.z + self.sca_layers[0].center.z) / 2,
         )
         logger.debug("sca.center.z" + str(self.sca_centre))
