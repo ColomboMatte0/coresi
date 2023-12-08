@@ -53,7 +53,7 @@ def filter_bad_events(events: list[Event], energy_range: list) -> list[Event]:
     """docstring for filter_bad_events"""
     return list(
         filter(
-            lambda event: energy_range[0] < event.E0 and energy_range[1] > event.E0,
+            lambda event: energy_range[0] <= event.E0 and energy_range[1] >= event.E0,
             events,
         )
     )
