@@ -3,6 +3,7 @@ from pathlib import Path
 
 from camera import Camera
 from event import Event
+from point import Point
 
 logger = getLogger("CORESI")
 
@@ -13,17 +14,22 @@ def read_data_file(
     E0: list[float],
     cameras: list[Camera],
     energy_range: list,
+    volume_config: dict,
     remove_out_of_range_energies: bool = True,
     start_position: int = 0,
     tol: float = 1e1,
 ) -> list[Event]:
     events = []
     skipped_events = 0
+    volume_center = Point(*volume_config["volume_centre"])
+    volume_dim = Point(*volume_config["volume_dimensions"])
     with open(file_name, "r") as data_fh:
         for line_n, line in enumerate(data_fh):
             if line_n >= start_position:
                 try:
-                    event = Event(line_n, line, E0, tol=tol)
+                    event = Event(
+                        line_n, line, E0, volume_center, volume_dim, tol=tol
+                    )
                     # This links the event to the camera(s) in which it occurred
                     event.set_camera_index(cameras)
                     events.append(event)

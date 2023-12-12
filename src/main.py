@@ -76,6 +76,8 @@ events = read_data_file(
     energy_range=config["energy_range"],
     start_position=config["starts_at"],
     tol=config["energy_threshold"],
+    # Used to determine if hit is in volume
+    volume_config=config["volume"],
 )
 
 logger.info(f"Took {time.time() - start} ms to read the data")

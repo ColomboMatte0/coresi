@@ -1,3 +1,5 @@
+import sys
+from logging import getLogger
 from math import acos, sqrt
 
 import torch
@@ -5,12 +7,20 @@ import torch
 from camera import Camera, DetectorType
 from point import Point
 
+logger = getLogger("CORESI")
 torch.set_grad_enabled(False)
 
 
 class Event(object):
     def __init__(
-        self, line_idx: int, line: str, E0: list, format: str = "GATE", tol: float = 1e1
+        self,
+        line_idx: int,
+        line: str,
+        E0: list,
+        volume_center,
+        volume_dim,
+        format: str = "GATE",
+        tol: float = 1e1,
     ):
         """
         :param int line_idx: Used to store the id of the line for debugging
@@ -32,6 +42,8 @@ class Event(object):
         )
         self.id = str(line_idx)
         self.tol = tol
+        self.volume_center = volume_center
+        self.volume_dim = volume_dim
         if format == "GATE":
             self.read_gate_dat_file(line)
 
@@ -62,6 +74,17 @@ class Event(object):
         else:
             self.E0 = self.source_E0[0]
             self.known_E0 = True
+
+        if self.is_hit_in_volume(self.V1):
+            logger.fatal(
+                f"The volume intersects the camera for first hit, check whether the camera configuration matches GATE's, and the volume dimension and position. Event: {line}"
+            )
+            sys.exit(1)
+        if self.is_hit_in_volume(self.V2):
+            logger.fatal(
+                f"The volume intersects the camera for second hit, check whether the camera configuration matches GATE's, and the volume dimension and position. Event: {line}"
+            )
+            sys.exit(1)
 
         # Apply the Compton formula
         # https://en.wikipedia.org/wiki/Compton_scattering
@@ -131,6 +154,13 @@ class Event(object):
         # Raise an exception so that the event is discarded
         if not found:
             raise (ValueError("V2 does not belong in a known camera"))
+
+    def is_hit_in_volume(self, V: Point) -> bool:
+        return (
+            abs(V.x - self.volume_center.x) <= self.volume_dim.x / 2
+            and abs(V.y - self.volume_center.y) <= self.volume_dim.y / 2
+            and abs(V.z - self.volume_center.z) <= self.volume_dim.z / 2
+        )
 
     def is_hit_in_camera(
         self, V: Point, camera: Camera
