@@ -34,6 +34,7 @@ options:
   -c CONFIG, --config CONFIG
                         Path to the configuration file
   --sensitivity         Compute the sensitivity and quits
+  --display             Display the reconstructed image
 ```
 
 See the `config.yaml` file for configuring CORESI.

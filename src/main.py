@@ -34,6 +34,11 @@ parser.add_argument(
     action="store_true",
     help="Compute the sensitivity and quits",
 )
+parser.add_argument(
+    "--display",
+    action="store_true",
+    help="Display the reconstructed image",
+)
 
 args = parser.parse_args()
 
@@ -130,5 +135,6 @@ result = mlem.run(
 
 logger.info(f"Took {time.time() - start} ms for MLEM")
 
-for e in range(len(config["E0"])):
-    result.display_z(energy=e)
+if args.display:
+    for e in range(len(config["E0"])):
+        result.display_z(energy=e)
