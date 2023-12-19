@@ -96,7 +96,6 @@ lm_mlem:
   width_factor: 1 # Used to artificially modify the spread of the cone
   sensitivity: true
   sensitivity_model: like_system_matrix # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
-  sensitivity_point_samples: 1000
-  # Supply a sensitivity file. Needs to have the same size as the number of
-  # voxels in the volume
+  sensitivity_point_samples: 0.5 # Used to compute the sensitivity for a coarser volume with less voxels. Set to 1 o disable
+  # Supply a sensitivity file. Needs to have the same size as the volume
   # sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw

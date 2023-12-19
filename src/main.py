@@ -77,17 +77,24 @@ cameras = setup_cameras(config["cameras"])
 checkpoint_dir = Path(config["lm_mlem"]["checkpoint_dir"])
 checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-mlem = LM_MLEM(
-    config["lm_mlem"],
-    config["volume"],
-    cameras,
-    args.config.name.split(".")[0],
-    config["E0"],
-    config["energy_threshold"],
-)
-
 
 if args.sensitivity:
+    if config["lm_mlem"]["sensitivity_point_samples"] < 1:
+        # Fake a smaller volume to fool SM_line
+        config["volume"]["n_voxels"] = [
+            int(n_voxel * config["lm_mlem"]["sensitivity_point_samples"])
+            if n_voxel > 1
+            else n_voxel
+            for n_voxel in config["volume"]["n_voxels"]
+        ]
+    mlem = LM_MLEM(
+        config["lm_mlem"],
+        config["volume"],
+        cameras,
+        args.config.name.split(".")[0],
+        config["E0"],
+        config["energy_threshold"],
+    )
     _ = LM_MLEM.compute_sensitivity(
         config["E0"],
         config["volume"],
@@ -98,6 +105,14 @@ if args.sensitivity:
     )
     sys.exit(0)
 
+mlem = LM_MLEM(
+    config["lm_mlem"],
+    config["volume"],
+    cameras,
+    args.config.name.split(".")[0],
+    config["E0"],
+    config["energy_threshold"],
+)
 mlem.init_sensitiviy(config["lm_mlem"], checkpoint_dir)
 
 logger.info(f"Processing {config['data_file']}")
