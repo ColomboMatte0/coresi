@@ -1543,48 +1543,81 @@ class LM_MLEM(object):
         # TODO: if interpolate need to increase volume dim and crop after
         # interpolation
         sensitivity = Image(len(energies), volume_config, init="ones")
-        x, y, z = LM_MLEM.create_mesh_axes(
-            [
-                sensitivity.corner.x + (sensitivity.voxel_size.x / 2),
-                sensitivity.corner.x
-                + sensitivity.dim_in_cm.x
-                - (sensitivity.voxel_size.x / 2),
-            ],
-            # Step size is the volume or a fraction of it
-            int(
-                sensitivity.dim_in_voxels.x
-                * config_mlem["sensitivity_point_samples"]
+        if config_mlem["sensitivity_point_samples"] < 1:
+            x, y, z = LM_MLEM.create_mesh_axes(
+                [
+                    sensitivity.corner.x
+                    + (sensitivity.voxel_size.x / 2)
+                    - sensitivity.voxel_size.x,
+                    sensitivity.corner.x
+                    + sensitivity.dim_in_cm.x
+                    - (sensitivity.voxel_size.x / 2)
+                    + sensitivity.voxel_size.x,
+                ],
+                # Step size is a fration of the volume size
+                # take superior int with ceil
+                int(
+                    sensitivity.dim_in_voxels.x
+                    * config_mlem["sensitivity_point_samples"]
+                    + 2
+                ),
+                [
+                    sensitivity.corner.y
+                    + (sensitivity.voxel_size.y / 2)
+                    - sensitivity.voxel_size.y,
+                    sensitivity.corner.y
+                    + sensitivity.dim_in_cm.y
+                    - (sensitivity.voxel_size.y / 2)
+                    + sensitivity.voxel_size.y,
+                ],
+                # Step size is a fration of the volume size
+                int(
+                    sensitivity.dim_in_voxels.y
+                    * config_mlem["sensitivity_point_samples"]
+                    + 2
+                ),
+                [
+                    sensitivity.corner.z
+                    + (sensitivity.voxel_size.z / 2)
+                    - sensitivity.voxel_size.z,
+                    sensitivity.corner.z
+                    + sensitivity.dim_in_cm.z
+                    - (sensitivity.voxel_size.z / 2)
+                    + sensitivity.voxel_size.z,
+                ],
+                # Step size is a fration of the volume size
+                int(
+                    sensitivity.dim_in_voxels.z
+                    * config_mlem["sensitivity_point_samples"]
+                    + 2
+                )
+                if sensitivity.dim_in_voxels.z > 1
+                else sensitivity.dim_in_voxels.z,
             )
-            if config_mlem["sensitivity_point_samples"] < 1
-            else sensitivity.dim_in_voxels.x,
-            [
-                sensitivity.corner.y + (sensitivity.voxel_size.y / 2),
-                sensitivity.corner.y
-                + sensitivity.dim_in_cm.y
-                - (sensitivity.voxel_size.y / 2),
-            ],
-            # Step size is the volume or a fraction of it
-            int(
-                sensitivity.dim_in_voxels.y
-                * config_mlem["sensitivity_point_samples"]
+        else:
+            x, y, z = LM_MLEM.create_mesh_axes(
+                [
+                    sensitivity.corner.x + (sensitivity.voxel_size.x / 2),
+                    sensitivity.corner.x
+                    + sensitivity.dim_in_cm.x
+                    - (sensitivity.voxel_size.x / 2),
+                ],
+                sensitivity.dim_in_voxels.x,
+                [
+                    sensitivity.corner.y + (sensitivity.voxel_size.y / 2),
+                    sensitivity.corner.y
+                    + sensitivity.dim_in_cm.y
+                    - (sensitivity.voxel_size.y / 2),
+                ],
+                sensitivity.dim_in_voxels.y,
+                [
+                    sensitivity.corner.z + (sensitivity.voxel_size.z / 2),
+                    sensitivity.corner.z
+                    + sensitivity.dim_in_cm.z
+                    - (sensitivity.voxel_size.z / 2),
+                ],
+                sensitivity.dim_in_voxels.z,
             )
-            if config_mlem["sensitivity_point_samples"] < 1
-            else sensitivity.dim_in_voxels.y,
-            [
-                sensitivity.corner.z + (sensitivity.voxel_size.z / 2),
-                sensitivity.corner.z
-                + sensitivity.dim_in_cm.z
-                - (sensitivity.voxel_size.z / 2),
-            ],
-            # Step size is the volume or a fraction of it
-            int(
-                sensitivity.dim_in_voxels.z
-                * config_mlem["sensitivity_point_samples"]
-            )
-            if (config_mlem["sensitivity_point_samples"] < 1)
-            and (sensitivity.dim_in_voxels.z > 1)
-            else sensitivity.dim_in_voxels.z,
-        )
         if (
             config_mlem["sensitivity_model"].startswith("solid")
             and config_mlem["sensitivity_point_samples"] < 1
@@ -1592,7 +1625,7 @@ class LM_MLEM(object):
             # Alter the volume config so that the sensitivity is calculed for a
             # coarser volume
             volume_config["n_voxels"] = [
-                int(n_voxel * config_mlem["sensitivity_point_samples"])
+                int(n_voxel * config_mlem["sensitivity_point_samples"]) + 2
                 if n_voxel > 1
                 else n_voxel
                 for n_voxel in volume_config["n_voxels"]
@@ -1634,17 +1667,28 @@ class LM_MLEM(object):
                 energies,
                 SM_line,
             )
+        sensitivity.display_z(0)
+
         if config_mlem["sensitivity_point_samples"] < 1:
             # Perform an inetrpolation to go back to the original volume size
             sensitivity.values = torch.nn.functional.interpolate(
                 # Squeeze to add a batch dimension
                 sensitivity.values.unsqueeze(0),
                 size=(
-                    sensitivity.dim_in_voxels.x,
-                    sensitivity.dim_in_voxels.y,
-                    sensitivity.dim_in_voxels.z,
+                    int(
+                        sensitivity.dim_in_voxels.x
+                        + (2 * 1 / config_mlem["sensitivity_point_samples"])
+                    ),
+                    int(
+                        sensitivity.dim_in_voxels.y
+                        + (2 * 1 / config_mlem["sensitivity_point_samples"])
+                    ),
+                    int(
+                        sensitivity.dim_in_voxels.z
+                        + (2 * 1 / config_mlem["sensitivity_point_samples"])
+                    ),
                 ),
-                mode="linear",
+                mode="trilinear",
             ).squeeze(0)
             # Reset to the original volume size in case MLEM is run after, as we
             # change volume_config by reference
@@ -1653,12 +1697,43 @@ class LM_MLEM(object):
                 sensitivity.dim_in_voxels.y,
                 sensitivity.dim_in_voxels.z,
             ]
+            volume_config["volume_dimensions"] = [
+                sensitivity.dim_in_cm.x,
+                sensitivity.dim_in_cm.y,
+                sensitivity.dim_in_cm.z,
+            ]
+            sensitivity.values = sensitivity.values[
+                :,
+                int(
+                    sensitivity.values.shape[1]
+                    - sensitivity.dim_in_voxels.x
+                    - (1 / config_mlem["sensitivity_point_samples"])
+                ) : int(
+                    sensitivity.values.shape[1]
+                    - (1 / config_mlem["sensitivity_point_samples"])
+                ),
+                int(
+                    sensitivity.values.shape[2]
+                    - sensitivity.dim_in_voxels.y
+                    - (1 / config_mlem["sensitivity_point_samples"])
+                ) : int(
+                    sensitivity.values.shape[2]
+                    - (1 / config_mlem["sensitivity_point_samples"])
+                ),
+                int(
+                    sensitivity.values.shape[3]
+                    - sensitivity.dim_in_voxels.z
+                    - (1 / config_mlem["sensitivity_point_samples"])
+                ) : int(
+                    sensitivity.values.shape[3]
+                    - (1 / config_mlem["sensitivity_point_samples"])
+                ),
+            ]
 
         logger.info(
             f"Sensitivity done, saving to {str(checkpoint_dir / 'sensitivity.npy')}"
         )
-        for energy in range(len(energies)):
-            sensitivity.display_z(energy)
+        sensitivity.display_z(0)
         torch.save(
             sensitivity.values,
             checkpoint_dir / "sensitivity.npy",
