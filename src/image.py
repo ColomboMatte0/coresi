@@ -41,10 +41,11 @@ class Image:
                 device=device,
             )
 
-    def display_x(self, slice: int = 0, **params):
+    def display_x(self, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
+        print(self.values.shape)
         mappable = ax.imshow(
-            self.values[slice, :, :].T.cpu(),
+            self.values[energy, slice, :, :].T.cpu(),
             origin="lower",
             # TODO documentj extent and fix centering
             extent=[
@@ -53,7 +54,6 @@ class Image:
                 self.center.z - self.dim_in_cm.z / 2,
                 self.center.z + self.dim_in_cm.z / 2,
             ],
-            **params,
         )
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
         ax.set_title("First slice of the X axis view")
@@ -61,10 +61,10 @@ class Image:
         fig.tight_layout()
         plt.show()
 
-    def display_y(self, slice: int = 0, **params):
+    def display_y(self, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
         mappable = ax.imshow(
-            self.values[:, slice, :].T.cpu(),
+            self.values[energy, :, slice, :].T.cpu(),
             origin="lower",
             extent=[
                 self.center.x - self.dim_in_cm.x / 2,
@@ -72,7 +72,6 @@ class Image:
                 self.center.z - self.dim_in_cm.z / 2,
                 self.center.z + self.dim_in_cm.z / 2,
             ],
-            **params,
         )
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
         ax.set_title("First slice of the Y axis view")

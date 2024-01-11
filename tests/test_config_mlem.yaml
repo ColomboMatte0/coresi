@@ -80,3 +80,6 @@ lm_mlem:
   width_factor: 1 # Used to artificially modify the spread of the cone
   checkpoint_dir: checkpoints
   save_every: 76
+  sensitivity: true
+  sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+  sensitivity_point_samples: 1 # Used to compute the sensitivity for a coarser volume with less voxels. Set to 1 o disable

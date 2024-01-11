@@ -318,6 +318,8 @@ class LM_MLEM(object):
                 result.values = (
                     result.values / self.sensitivity.values * next_result.values
                 )
+            # TV here
+            # result.values = tv(result.values)
 
             # It must be re-initialized as zero as temporary values are sumed
             next_result.values = torch.zeros(
@@ -1667,7 +1669,6 @@ class LM_MLEM(object):
                 energies,
                 SM_line,
             )
-        sensitivity.display_z(0)
 
         if config_mlem["sensitivity_point_samples"] < 1:
             # Perform an inetrpolation to go back to the original volume size
@@ -1733,7 +1734,6 @@ class LM_MLEM(object):
         logger.info(
             f"Sensitivity done, saving to {str(checkpoint_dir / 'sensitivity.npy')}"
         )
-        sensitivity.display_z(0)
         torch.save(
             sensitivity.values,
             checkpoint_dir / "sensitivity.npy",

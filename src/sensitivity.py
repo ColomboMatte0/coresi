@@ -11,6 +11,8 @@ torch.set_grad_enabled(False)
 
 logger = getLogger("CORESI")
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 def block(
     cameras: list[Camera],
@@ -20,6 +22,7 @@ def block(
     z: torch.Tensor,
 ):
     """The sensitivity is the solid angle of scatterer bounding box"""
+    cameras = [cameras[0]]
     # As computed here the sensitivity does not depend on the energy
     sensitivity_vol = Image(1, volume_config)
     for camera in cameras:
@@ -37,7 +40,7 @@ def block(
             ),
             torch.tensor((camera.Ox, camera.Oy, camera.Oz), dtype=torch.double),
             dims=1,
-        )
+        ).to(device)
         # 3rd dimension is z
         D = torch.abs(points[:, 2] - camera.sca_centre.z)
         sq = torch.sqrt(
@@ -64,6 +67,7 @@ def attenuation_exp(
     mu=0.2038,
 ):
     sensitivity_vol = Image(1, volume_config)
+    cameras = [cameras[0]]
     for camera in cameras:
         # As computed here the sensitivity does not depend on the energy
         b, d = camera.sca_layers[0].dim.x / 2, camera.sca_layers[0].dim.y / 2
@@ -86,7 +90,7 @@ def attenuation_exp(
             ),
             torch.tensor((camera.Ox, camera.Oy, camera.Oz), dtype=torch.double),
             dims=1,
-        )
+        ).to(device)
         for idx_layer, layer in enumerate(camera.sca_layers + camera.abs_layers):
             # 3rd dimension is z
             D = torch.abs(points[:, 2] - layer.center.z)
@@ -142,6 +146,7 @@ def valencia_4D(
 ):
     """Compute a system matrix by computing the probability of a random gammas
     reaching the cameras detectos"""
+    cameras = [cameras[0]]
     sensitivity_vol = Image(len(energies), volume_config)
     for camera in cameras:
         points = torch.tensordot(
@@ -158,7 +163,7 @@ def valencia_4D(
             ),
             torch.tensor((camera.Ox, camera.Oy, camera.Oz), dtype=torch.double),
             dims=1,
-        )
+        ).to(device)
         for idx_layer, layer in enumerate(camera.sca_layers):
             # TODO: Use spectral version of the algorithm to sensitivity for all
             # energies at once? Choose an energy at random?

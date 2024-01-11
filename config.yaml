@@ -82,7 +82,7 @@ cameras:
 
 volume:
   volume_dimensions: [20, 20, 0.4] # In centimeters
-  n_voxels: [50, 50, 1]
+  n_voxels: [100, 100, 1]
   volume_centre: [0, 0, 0]
 
 lm_mlem:
@@ -95,7 +95,7 @@ lm_mlem:
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
   width_factor: 1 # Used to artificially modify the spread of the cone
   sensitivity: true
-  sensitivity_model: like_system_matrix # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
-  sensitivity_point_samples: 0.5 # Used to compute the sensitivity for a coarser volume with less voxels. Set to 1 o disable
+  sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+  sensitivity_point_samples: 0.25 # Used to compute the sensitivity for a coarser volume with less voxels. Set to 1 o disable
   # Supply a sensitivity file. Needs to have the same size as the volume
   # sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
