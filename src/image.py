@@ -97,6 +97,52 @@ class Image:
         fig.tight_layout()
         plt.show()
 
+    def save_all(
+        self,
+        config_name: str,
+        config: dict,
+        cpp: bool = False,
+        commit: str = "00000000",
+    ):
+        if len(config["E0"]) > 1:
+            fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+            for idx, ax in enumerate(axs.flatten()):
+                mappable = ax.imshow(
+                    self.values[idx, :, :, 0].T.cpu(),
+                    origin="lower",
+                    extent=[
+                        self.center.x - self.dim_in_cm.x / 2,
+                        self.center.x + self.dim_in_cm.x / 2,
+                        self.center.y - self.dim_in_cm.y / 2,
+                        self.center.y + self.dim_in_cm.y / 2,
+                    ],
+                )
+                cax = make_axes_locatable(ax).append_axes(
+                    "right", size="5%", pad=0.05
+                )
+                ax.set_title(f"{config['E0'][idx]} keV")
+                fig.colorbar(mappable, cax=cax, orientation="vertical")
+        else:
+            fig, ax = plt.subplots()
+            mappable = ax.imshow(
+                self.values[0, :, :, 0].T.cpu(),
+                origin="lower",
+                extent=[
+                    self.center.x - self.dim_in_cm.x / 2,
+                    self.center.x + self.dim_in_cm.x / 2,
+                    self.center.y - self.dim_in_cm.y / 2,
+                    self.center.y + self.dim_in_cm.y / 2,
+                ],
+            )
+            cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
+            ax.set_title(f"{config['E0'][0]} keV")
+            fig.colorbar(mappable, cax=cax, orientation="vertical")
+        fig.suptitle(
+            f"{'C++' if cpp else 'Python version ' + commit} Sensitivity: {config['lm_mlem']['sensitivity_model'] if config['lm_mlem']['sensitivity'] else 'False'}, Algorithm: {config['lm_mlem']['cone_thickness']}\nModel: {config['lm_mlem']['model']}, Iterations: {int(config['lm_mlem']['last_iter'] - config['lm_mlem']['first_iter'])}, n_events: {config['n_events']}"
+        )
+        fig.tight_layout()
+        fig.savefig(config_name)
+
     def read_file(self, file_name: str) -> None:
         self.values = self.xp.fromfile(file_name, dtype="double").reshape(
             self.dim_in_voxels.x, self.dim_in_voxels.y, self.dim_in_voxels.z

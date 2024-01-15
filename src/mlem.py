@@ -38,6 +38,7 @@ class LM_MLEM(object):
             # Theta_j is not needed for this model. Instruct to not compute it as
             # it's fairly expensive
             self.compute_theta_j = False
+            self.do_nothing = True
 
             def model(kbl_j):
                 return kbl_j
@@ -46,11 +47,13 @@ class LM_MLEM(object):
             # Theta_j is not needed for this model. Instruct to not compute it as
             # it's fairly expensive
             self.compute_theta_j = False
+            self.do_nothing = False
 
             def model(rho_j):
                 return 1 / rho_j**2
 
         elif config_mlem["model"] == "cos1rho2":
+            self.do_nothing = False
 
             def model(cos_theta_j, rho_j):
                 return abs(cos_theta_j) / rho_j**2
@@ -401,7 +404,7 @@ class LM_MLEM(object):
                 + (camera_V1_Oz.z * (self.zz - event.V1.z)) / rho_j
             )
             self.line.values *= self.model(cos_theta_j, rho_j)
-        else:
+        elif not self.do_nothing:
             self.line.values *= self.model(rho_j)
 
         # Ti is here i.e. the system matrix for an event i
@@ -484,7 +487,7 @@ class LM_MLEM(object):
 
             if self.compute_theta_j:
                 self.line.values[idx] *= self.model(cos_theta_j, rho_j)
-            else:
+            elif not self.do_nothing:
                 self.line.values[idx] *= self.model(rho_j)
 
             sca_compton_diff_xsection = camera.get_compton_diff_xsection(
@@ -817,7 +820,7 @@ class LM_MLEM(object):
 
             if self.compute_theta_j:
                 self.line.values[idx] *= self.model(cos_theta_j, rho_j)
-            else:
+            elif not self.do_nothing:
                 self.line.values[idx] *= self.model(rho_j)
 
             # Recompute the energy of the scattered photon to account for the
@@ -1120,7 +1123,7 @@ class LM_MLEM(object):
                 + (camera_V1_Oz.z * (self.zz - event.V1.z)) / rho_j
             )
             self.line.values *= self.model(cos_theta_j, rho_j)
-        else:
+        elif not self.do_nothing:
             self.line.values *= self.model(rho_j)
 
         # lambda / lambda prime
@@ -1453,7 +1456,7 @@ class LM_MLEM(object):
 
             if self.compute_theta_j:
                 kbl_j = kbl_j * self.model(cos_theta_j, rho_j)
-            else:
+            elif not self.do_nothing:
                 kbl_j = kbl_j * self.model(rho_j)
 
             # Gauss

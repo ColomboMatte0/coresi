@@ -1,0 +1,612 @@
+config_1:
+  data_file: tests/test_mlem.dat
+  data_type: 'MACACO'
+  # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+  E0: [140, 245, 364, 511]
+  #E0: [140]
+  remove_out_of_range_energies: False
+  # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
+  # otherwise
+  energy_range: [120, 150]
+  # Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+  # tecteurs.
+  # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+  # des détecteurs)
+  energy_threshold: 5
+  n_events: 1
+  starts_at: 0
+
+  # Supply a sensitivity file. Needs to have the same size as the number of
+  # voxels in the volume
+  #sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
+
+  # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
+  # Up to 5 absorbers are implemented
+  cameras:
+    n_cameras: 1
+      # Cameras scatterer have the same characteristics besides their positions
+    common_attributes:
+      n_sca_layers: 7
+      sca_material: Si
+      abs_material: Si
+      sca_layer_0:
+        center: [0, 0, -10]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_1:
+        center: [0, 0, -11]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_2:
+        center: [0, 0, -12]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_3:
+        center: [0, 0, -13]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_4:
+        center: [0, 0, -14]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_5:
+        center: [0, 0, -15]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_6:
+        center: [0, 0, -16]
+        size: [9.0, 9.0, 0.2]
+
+      n_absorbers: 1
+
+      # if an absorber layer is missing, define it as None
+      # For example, abs_layer_1: None
+      abs_layer_0: # bottom
+        center: [0, 0, -31.0]
+        size: [28.0, 21.0, 3]
+      abs_layer_1: None # front
+      abs_layer_2: None # rear
+      abs_layer_3: None # right
+      abs_layer_4: None # left
+
+    position_0:
+      frame_origin: [0, 0, 0]
+      Ox: [1, 0, 0]    # parallel to scatterer edge
+      Oy: [0, 1, 0]    # parallel to scatterer edge
+      Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+
+  volume:
+    volume_dimensions: [20, 20, 0.4] # In centimeters
+    n_voxels: [50, 50, 1]
+    volume_centre: [0, 0, 0]
+
+  lm_mlem:
+    cone_thickness: 'parallel' # angular or parallel
+    model: 'cos1rho2'
+    last_iter: 0
+    first_iter: 0
+    n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+    width_factor: 1 # Used to artificially modify the spread of the cone
+    checkpoint_dir: checkpoints
+    save_every: 76
+    sensitivity: False
+    sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+    sensitivity_point_samples: 1 # used to compute the sensitivity for a coarser volume with less voxels. set to 1 o disable
+config_2:
+  data_file: tests/test_mlem.dat
+  data_type: 'MACACO'
+  # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+  E0: [140, 245, 364, 511]
+  #E0: [140]
+  remove_out_of_range_energies: False
+  # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
+  # otherwise
+  energy_range: [120, 150]
+  # Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+  # tecteurs.
+  # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+  # des détecteurs)
+  energy_threshold: 5
+  n_events: 1
+  starts_at: 0
+
+  # Supply a sensitivity file. Needs to have the same size as the number of
+  # voxels in the volume
+  #sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
+
+  # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
+  # Up to 5 absorbers are implemented
+  cameras:
+    n_cameras: 1
+      # Cameras scatterer have the same characteristics besides their positions
+    common_attributes:
+      n_sca_layers: 7
+      sca_material: Si
+      abs_material: Si
+      sca_layer_0:
+        center: [0, 0, -10]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_1:
+        center: [0, 0, -11]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_2:
+        center: [0, 0, -12]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_3:
+        center: [0, 0, -13]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_4:
+        center: [0, 0, -14]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_5:
+        center: [0, 0, -15]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_6:
+        center: [0, 0, -16]
+        size: [9.0, 9.0, 0.2]
+
+      n_absorbers: 1
+
+      # if an absorber layer is missing, define it as None
+      # For example, abs_layer_1: None
+      abs_layer_0: # bottom
+        center: [0, 0, -31.0]
+        size: [28.0, 21.0, 3]
+      abs_layer_1: None # front
+      abs_layer_2: None # rear
+      abs_layer_3: None # right
+      abs_layer_4: None # left
+
+    position_0:
+      frame_origin: [0, 0, 0]
+      Ox: [1, 0, 0]    # parallel to scatterer edge
+      Oy: [0, 1, 0]    # parallel to scatterer edge
+      Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+
+  volume:
+    volume_dimensions: [20, 20, 0.4] # In centimeters
+    n_voxels: [50, 50, 1]
+    volume_centre: [0, 0, 0]
+
+  lm_mlem:
+    cone_thickness: 'angular' # angular or parallel
+    model: 'cos1rho2'
+    last_iter: 0
+    first_iter: 0
+    n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+    width_factor: 1 # Used to artificially modify the spread of the cone
+    checkpoint_dir: checkpoints
+    save_every: 76
+    sensitivity: False
+    sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+    sensitivity_point_samples: 1 # used to compute the sensitivity for a coarser volume with less voxels. set to 1 o disable
+config_3:
+  data_file: tests/test_mlem.dat
+  data_type: 'MACACO'
+  # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+  E0: [140, 245, 364, 511]
+  #E0: [140]
+  remove_out_of_range_energies: False
+  # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
+  # otherwise
+  energy_range: [120, 150]
+  # Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+  # tecteurs.
+  # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+  # des détecteurs)
+  energy_threshold: 5
+  n_events: 1
+  starts_at: 0
+
+  # Supply a sensitivity file. Needs to have the same size as the number of
+  # voxels in the volume
+  #sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
+
+  # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
+  # Up to 5 absorbers are implemented
+  cameras:
+    n_cameras: 1
+      # Cameras scatterer have the same characteristics besides their positions
+    common_attributes:
+      n_sca_layers: 7
+      sca_material: Si
+      abs_material: Si
+      sca_layer_0:
+        center: [0, 0, -10]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_1:
+        center: [0, 0, -11]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_2:
+        center: [0, 0, -12]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_3:
+        center: [0, 0, -13]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_4:
+        center: [0, 0, -14]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_5:
+        center: [0, 0, -15]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_6:
+        center: [0, 0, -16]
+        size: [9.0, 9.0, 0.2]
+
+      n_absorbers: 1
+
+      # if an absorber layer is missing, define it as None
+      # For example, abs_layer_1: None
+      abs_layer_0: # bottom
+        center: [0, 0, -31.0]
+        size: [28.0, 21.0, 3]
+      abs_layer_1: None # front
+      abs_layer_2: None # rear
+      abs_layer_3: None # right
+      abs_layer_4: None # left
+
+    position_0:
+      frame_origin: [0, 0, 0]
+      Ox: [1, 0, 0]    # parallel to scatterer edge
+      Oy: [0, 1, 0]    # parallel to scatterer edge
+      Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+
+  volume:
+    volume_dimensions: [20, 20, 0.4] # In centimeters
+    n_voxels: [50, 50, 1]
+    volume_centre: [0, 0, 0]
+
+  lm_mlem:
+    cone_thickness: 'angular' # angular or parallel
+    model: 'cos1rho2'
+    last_iter: 0
+    first_iter: 0
+    n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+    width_factor: 1 # Used to artificially modify the spread of the cone
+    checkpoint_dir: checkpoints
+    save_every: 76
+    sensitivity: False
+    sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+    sensitivity_point_samples: 1 # used to compute the sensitivity for a coarser volume with less voxels. set to 1 o disable
+config_4:
+  data_file: tests/test_mlem.dat
+  data_type: 'MACACO'
+  # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+  E0: [140]
+  remove_out_of_range_energies: False
+  # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
+  # otherwise
+  energy_range: [120, 150]
+  # Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+  # tecteurs.
+  # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+  # des détecteurs)
+  energy_threshold: 5
+  n_events: 1
+  starts_at: 0
+
+  # Supply a sensitivity file. Needs to have the same size as the number of
+  # voxels in the volume
+  #sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
+
+  # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
+  # Up to 5 absorbers are implemented
+  cameras:
+    n_cameras: 1
+      # Cameras scatterer have the same characteristics besides their positions
+    common_attributes:
+      n_sca_layers: 7
+      sca_material: Si
+      abs_material: Si
+      sca_layer_0:
+        center: [0, 0, -10]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_1:
+        center: [0, 0, -11]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_2:
+        center: [0, 0, -12]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_3:
+        center: [0, 0, -13]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_4:
+        center: [0, 0, -14]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_5:
+        center: [0, 0, -15]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_6:
+        center: [0, 0, -16]
+        size: [9.0, 9.0, 0.2]
+
+      n_absorbers: 1
+
+      # if an absorber layer is missing, define it as None
+      # For example, abs_layer_1: None
+      abs_layer_0: # bottom
+        center: [0, 0, -31.0]
+        size: [28.0, 21.0, 3]
+      abs_layer_1: None # front
+      abs_layer_2: None # rear
+      abs_layer_3: None # right
+      abs_layer_4: None # left
+
+    position_0:
+      frame_origin: [0, 0, 0]
+      Ox: [1, 0, 0]    # parallel to scatterer edge
+      Oy: [0, 1, 0]    # parallel to scatterer edge
+      Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+
+  volume:
+    volume_dimensions: [20, 20, 0.4] # In centimeters
+    n_voxels: [50, 50, 1]
+    volume_centre: [0, 0, 0]
+
+  lm_mlem:
+    cone_thickness: 'angular' # angular or parallel
+    model: 'cos1rho2'
+    last_iter: 0
+    first_iter: 0
+    n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+    width_factor: 1 # Used to artificially modify the spread of the cone
+    checkpoint_dir: checkpoints
+    save_every: 76
+    sensitivity: False
+    sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+    sensitivity_point_samples: 1 # used to compute the sensitivity for a coarser volume with less voxels. set to 1 o disable
+config_5:
+  data_file: tests/test_mlem.dat
+  data_type: 'MACACO'
+  # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+  E0: [140]
+  remove_out_of_range_energies: False
+  # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
+  # otherwise
+  energy_range: [120, 150]
+  # Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+  # tecteurs.
+  # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+  # des détecteurs)
+  energy_threshold: 5
+  n_events: 1
+  starts_at: 0
+
+  # Supply a sensitivity file. Needs to have the same size as the number of
+  # voxels in the volume
+  #sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
+
+  # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
+  # Up to 5 absorbers are implemented
+  cameras:
+    n_cameras: 1
+      # Cameras scatterer have the same characteristics besides their positions
+    common_attributes:
+      n_sca_layers: 7
+      sca_material: Si
+      abs_material: Si
+      sca_layer_0:
+        center: [0, 0, -10]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_1:
+        center: [0, 0, -11]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_2:
+        center: [0, 0, -12]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_3:
+        center: [0, 0, -13]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_4:
+        center: [0, 0, -14]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_5:
+        center: [0, 0, -15]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_6:
+        center: [0, 0, -16]
+        size: [9.0, 9.0, 0.2]
+
+      n_absorbers: 1
+
+      # if an absorber layer is missing, define it as None
+      # For example, abs_layer_1: None
+      abs_layer_0: # bottom
+        center: [0, 0, -31.0]
+        size: [28.0, 21.0, 3]
+      abs_layer_1: None # front
+      abs_layer_2: None # rear
+      abs_layer_3: None # right
+      abs_layer_4: None # left
+
+    position_0:
+      frame_origin: [0, 0, 0]
+      Ox: [1, 0, 0]    # parallel to scatterer edge
+      Oy: [0, 1, 0]    # parallel to scatterer edge
+      Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+
+  volume:
+    volume_dimensions: [20, 20, 0.4] # In centimeters
+    n_voxels: [50, 50, 1]
+    volume_centre: [0, 0, 0]
+
+  lm_mlem:
+    cone_thickness: 'parallel' # angular or parallel
+    model: 'cos1rho2'
+    last_iter: 0
+    first_iter: 0
+    n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+    width_factor: 1 # Used to artificially modify the spread of the cone
+    checkpoint_dir: checkpoints
+    save_every: 76
+    sensitivity: False
+    sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+    sensitivity_point_samples: 1 # used to compute the sensitivity for a coarser volume with less voxels. set to 1 o disable
+config_6:
+  data_file: tests/test_mlem.dat
+  data_type: 'MACACO'
+  # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+  E0: [140, 245, 364, 511]
+  remove_out_of_range_energies: False
+  # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
+  # otherwise
+  energy_range: [120, 150]
+  # Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+  # tecteurs.
+  # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+  # des détecteurs)
+  energy_threshold: 5
+  n_events: 1
+  starts_at: 0
+
+  # Supply a sensitivity file. Needs to have the same size as the number of
+  # voxels in the volume
+  #sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
+
+  # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
+  # Up to 5 absorbers are implemented
+  cameras:
+    n_cameras: 1
+      # Cameras scatterer have the same characteristics besides their positions
+    common_attributes:
+      n_sca_layers: 7
+      sca_material: Si
+      abs_material: Si
+      sca_layer_0:
+        center: [0, 0, -10]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_1:
+        center: [0, 0, -11]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_2:
+        center: [0, 0, -12]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_3:
+        center: [0, 0, -13]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_4:
+        center: [0, 0, -14]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_5:
+        center: [0, 0, -15]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_6:
+        center: [0, 0, -16]
+        size: [9.0, 9.0, 0.2]
+
+      n_absorbers: 1
+
+      # if an absorber layer is missing, define it as None
+      # For example, abs_layer_1: None
+      abs_layer_0: # bottom
+        center: [0, 0, -31.0]
+        size: [28.0, 21.0, 3]
+      abs_layer_1: None # front
+      abs_layer_2: None # rear
+      abs_layer_3: None # right
+      abs_layer_4: None # left
+
+    position_0:
+      frame_origin: [0, 0, 0]
+      Ox: [1, 0, 0]    # parallel to scatterer edge
+      Oy: [0, 1, 0]    # parallel to scatterer edge
+      Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+
+  volume:
+    volume_dimensions: [20, 20, 0.4] # In centimeters
+    n_voxels: [50, 50, 1]
+    volume_centre: [0, 0, 0]
+
+  lm_mlem:
+    cone_thickness: 'parallel' # angular or parallel
+    model: 'cos1rho2'
+    last_iter: 0
+    first_iter: 0
+    n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+    width_factor: 1 # Used to artificially modify the spread of the cone
+    checkpoint_dir: checkpoints
+    save_every: 76
+    sensitivity: true
+    sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+    sensitivity_point_samples: 1 # used to compute the sensitivity for a coarser volume with less voxels. set to 1 o disable
+config_7:
+  data_file: tests/test_mlem.dat
+  data_type: 'MACACO'
+  # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+  E0: [140, 245, 364, 511]
+  remove_out_of_range_energies: False
+  # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
+  # otherwise
+  energy_range: [120, 150]
+  # Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
+  # tecteurs.
+  # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
+  # des détecteurs)
+  energy_threshold: 5
+  n_events: 1
+  starts_at: 0
+
+  # Supply a sensitivity file. Needs to have the same size as the number of
+  # voxels in the volume
+  #sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
+
+  # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
+  # Up to 5 absorbers are implemented
+  cameras:
+    n_cameras: 1
+      # Cameras scatterer have the same characteristics besides their positions
+    common_attributes:
+      n_sca_layers: 7
+      sca_material: Si
+      abs_material: Si
+      sca_layer_0:
+        center: [0, 0, -10]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_1:
+        center: [0, 0, -11]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_2:
+        center: [0, 0, -12]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_3:
+        center: [0, 0, -13]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_4:
+        center: [0, 0, -14]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_5:
+        center: [0, 0, -15]
+        size: [9.0, 9.0, 0.2]
+      sca_layer_6:
+        center: [0, 0, -16]
+        size: [9.0, 9.0, 0.2]
+
+      n_absorbers: 1
+
+      # if an absorber layer is missing, define it as None
+      # For example, abs_layer_1: None
+      abs_layer_0: # bottom
+        center: [0, 0, -31.0]
+        size: [28.0, 21.0, 3]
+      abs_layer_1: None # front
+      abs_layer_2: None # rear
+      abs_layer_3: None # right
+      abs_layer_4: None # left
+
+    position_0:
+      frame_origin: [0, 0, 0]
+      Ox: [1, 0, 0]    # parallel to scatterer edge
+      Oy: [0, 1, 0]    # parallel to scatterer edge
+      Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+
+  volume:
+    volume_dimensions: [20, 20, 0.4] # In centimeters
+    n_voxels: [50, 50, 1]
+    volume_centre: [0, 0, 0]
+
+  lm_mlem:
+    cone_thickness: 'parallel' # angular or parallel
+    model: 'cos1rho2'
+    last_iter: 0
+    first_iter: 0
+    n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+    width_factor: 1 # Used to artificially modify the spread of the cone
+    checkpoint_dir: checkpoints
+    save_every: 76
+    sensitivity: true
+    sensitivity_model: solid_angle_with_attn # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+    sensitivity_point_samples: 1 # used to compute the sensitivity for a coarser volume with less voxels. set to 1 o disable
