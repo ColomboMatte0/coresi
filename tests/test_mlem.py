@@ -38,6 +38,7 @@ class MLEM(unittest.TestCase):
             E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
+            volume_config=config["volume"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
             start_position=0,
         )
@@ -45,15 +46,18 @@ class MLEM(unittest.TestCase):
             config["lm_mlem"],
             config["volume"],
             cameras,
-            events,
             # Supply the sensitivity file if provided
-            config["sensitivity_file"] if "sensitivity_file" in config else None,
             "test_config",
             config["E0"],
             config["energy_threshold"],
         )
+        mlem.init_sensitiviy(config["lm_mlem"], test_dir)
         result = mlem.run(
-            config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"]
+            events,
+            config["lm_mlem"]["last_iter"],
+            config["lm_mlem"]["first_iter"],
+            config["lm_mlem"]["save_every"],
+            test_dir,
         )
         np.testing.assert_array_equal(
             np.load(
@@ -82,6 +86,8 @@ class MLEM(unittest.TestCase):
             [140],
             config["energy_threshold"],
         )
+
+        mlem.init_sensitiviy(config["lm_mlem"], test_dir)
         result = mlem.run(
             config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"]
         )
@@ -100,23 +106,27 @@ class MLEM(unittest.TestCase):
             E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
+            volume_config=config["volume"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
             start_position=0,
         )
-
         mlem = LM_MLEM(
             config["lm_mlem"],
             config["volume"],
             cameras,
-            events,
+            "test_mlem",
             # Supply the sensitivity file if provided
-            config["sensitivity_file"] if "sensitivity_file" in config else None,
-            "test_config",
             config["E0"],
             config["energy_threshold"],
         )
+        mlem.init_sensitiviy(config["lm_mlem"], test_dir)
+
         result = mlem.run(
-            config["lm_mlem"]["last_iter"], config["lm_mlem"]["first_iter"]
+            events,
+            config["lm_mlem"]["last_iter"],
+            config["lm_mlem"]["first_iter"],
+            config["lm_mlem"]["save_every"],
+            test_dir,
         )
 
         # Open a tmp directory in which the CORESI results will be stored
