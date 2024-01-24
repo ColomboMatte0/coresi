@@ -285,27 +285,11 @@ class LM_MLEM(object):
                     continue
 
                 # # Iteration 0 is a simple backprojection
-                # if iter == 0:
-                #     next_result.values += line.values
-                # else:
-                #     # independent dot for the energies
-                #     forward_proj = torch.einsum(
-                #         "ijkl,ijkl->i", line.values, result.values
-                #     ).reshape(-1, 1, 1, 1)
-                #     next_result.values += torch.divide(
-                #         line.values, forward_proj, where=forward_proj != 0
-                #     )
-                for energy in range(self.n_energies):
-                    # Iteration 0 is a simple backprojection
-                    if iter == 0:
-                        next_result.values[energy] += line.values[energy]
-                    elif event.xsection[energy] > 0.0:
-                        forward_proj = torch.mul(
-                            line.values[energy], result.values[energy]
-                        ).nansum()
-                        next_result.values[energy] += (
-                            line.values[energy] / forward_proj
-                        )
+                if iter == 0:
+                    next_result.values += line.values
+                else:
+                    forward_proj = torch.mul(line.values, result.values).sum()
+                    next_result.values += line.values / forward_proj
 
             if len(to_delete) > 0:
                 events = np.delete(events, to_delete)
