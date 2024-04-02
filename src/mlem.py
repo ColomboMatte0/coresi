@@ -1,3 +1,4 @@
+import os
 import sys
 from logging import getLogger
 from math import pi
@@ -81,7 +82,7 @@ class LM_MLEM(object):
 
         constants = self.read_constants("constants.yaml")
         logger.info(
-            f"Using device {'cpu' if not torch.cuda.is_available() else torch.cuda.get_device_name(0)}"
+            f"Using device {'cpu (' + str(os.cpu_count()) +' cpu available)' if not torch.cuda.is_available() else torch.cuda.get_device_name(0)}"
         )
 
         self.config_volume = config_volume
