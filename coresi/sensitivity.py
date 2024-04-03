@@ -1,11 +1,12 @@
 from logging import getLogger
 
+import matplotlib.pyplot as plt
 import torch
 
-from camera import Camera
-from event import Event
-from image import Image
-from point import Point
+from coresi.camera import Camera
+from coresi.event import Event
+from coresi.image import Image
+from coresi.point import Point
 
 torch.set_grad_enabled(False)
 
@@ -142,13 +143,16 @@ def valencia_4D(
     energies: list[float],
     SM_line: callable,
     # mc_samples: int = int(1e4),
-    mc_samples: int = int(2e1),
+    # mc_samples: int = int(2e1),
+    mc_samples: int = 1,
 ):
     """Compute a system matrix by computing the probability of a random gammas
     reaching the cameras detectos"""
     cameras = [cameras[0]]
     sensitivity_vol = Image(len(energies), volume_config)
+    print(sensitivity_vol.values.shape)
     for camera in cameras:
+        camera.sca_layers = [camera.sca_layers[2]]
         points = torch.tensordot(
             (
                 torch.tensor(
@@ -164,14 +168,15 @@ def valencia_4D(
             torch.tensor((camera.Ox, camera.Oy, camera.Oz), dtype=torch.double),
             dims=1,
         ).to(device)
+        points = points[558].unsqueeze(0)
+        print(points.shape)
+        print(points)
         for idx_layer, layer in enumerate(camera.sca_layers):
             # TODO: Use spectral version of the algorithm to sensitivity for all
             # energies at once? Choose an energy at random?
             for idx_energy, energy in enumerate(energies):
                 for _ in range(mc_samples):
-                    x1 = generate_random_point(
-                        layer.dim, layer.center, points.shape[0]
-                    )
+                    x1 = generate_random_point(layer.dim, layer.center, points.shape[0])
                     x2 = generate_random_point(
                         camera.abs_layers[0].dim,
                         camera.abs_layers[0].center,
@@ -184,12 +189,15 @@ def valencia_4D(
                         * torch.linalg.norm(r2, 2, axis=1)
                     )
                     E_gamma = energy / (1 + (energy / 511.0) * (1 - cosbeta))
+                    print("e_gamma", E_gamma)
                     # The Event class does the convertion to centimeters
                     x1 = x1 * 10
                     x2 = x2 * 10
                     for idx in range(len(E_gamma)):
                         # Forge an event with the GATE line's format
-                        line = f"2\t1\t{x1[idx][0]}\t{x1[idx][1]}\t{x1[idx][2]}\t{energy - E_gamma[idx]}\t2\t{x2[idx][0]}\t{x2[idx][1]}\t{x2[idx][2]}\t{E_gamma[idx]}\t3\t0\t0\t0"
+                        print(energy - E_gamma[idx])
+                        line = f"2\t1\t{x1[idx][0]}\t{x1[idx][1]}\t{x1[idx][2]}\t{energy - E_gamma[idx]}\t2\t{x2[idx][0]}\t{x2[idx][1]}\t{x2[idx][2]}\t{E_gamma[idx]}\t3\t0\t0\t0\t0"
+                        print(line)
                         try:
                             event = Event(
                                 0,
@@ -200,9 +208,7 @@ def valencia_4D(
                             )
                             event.set_camera_index([camera])
                         except ValueError as e:
-                            logger.debug(
-                                f"Skipping event {line.strip()} REASON: {e}"
-                            )
+                            logger.debug(f"Skipping event {line.strip()} REASON: {e}")
                             continue
                         try:
                             sensitivity_vol.values[idx_energy] += (
@@ -214,7 +220,7 @@ def valencia_4D(
                             )
                             continue
 
-    return sensitivity_vol.values / mc_samples
+    return sensitivity_vol.values / mc_samples, points
 
 
 def generate_random_point(dim: Point, center: Point, n_points: int) -> torch.Tensor:

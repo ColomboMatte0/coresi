@@ -1,9 +1,9 @@
 from logging import getLogger
 from pathlib import Path
 
-from camera import Camera
-from event import Event
-from point import Point
+from coresi.camera import Camera
+from coresi.event import Event
+from coresi.point import Point
 
 logger = getLogger("CORESI")
 
@@ -27,9 +27,7 @@ def read_data_file(
         for line_n, line in enumerate(data_fh):
             if line_n >= start_position:
                 try:
-                    event = Event(
-                        line_n, line, E0, volume_center, volume_dim, tol=tol
-                    )
+                    event = Event(line_n, line, E0, volume_center, volume_dim, tol=tol)
                     # This links the event to the camera(s) in which it occurred
                     event.set_camera_index(cameras)
                     events.append(event)

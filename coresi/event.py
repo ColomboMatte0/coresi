@@ -4,8 +4,8 @@ from math import acos, sqrt
 
 import torch
 
-from camera import Camera, DetectorType
-from point import Point
+from coresi.camera import Camera, DetectorType
+from coresi.point import Point
 
 logger = getLogger("CORESI")
 torch.set_grad_enabled(False)
@@ -74,7 +74,6 @@ class Event(object):
         else:
             self.E0 = self.source_E0[0]
             self.known_E0 = True
-
         if self.is_hit_in_volume(self.V1):
             logger.fatal(
                 f"The volume intersects the camera for first hit, check whether the camera configuration matches GATE's, and the volume dimension and position. Event: {line}"
@@ -86,14 +85,15 @@ class Event(object):
             )
             sys.exit(1)
 
-        # Apply the Compton formula
-        # https://en.wikipedia.org/wiki/Compton_scattering
-        # 511 is the electron mass
-        self.cosbeta = 1.0 - self.Ee * 511.0 / (self.E0 * (self.E0 - self.Ee))
-        if self.cosbeta < -1 or self.cosbeta > 1:
-            raise ValueError("Invalid cosbeta")
-        self.sinbeta = sqrt(1 - self.cosbeta**2)
-        self.beta = acos(self.cosbeta)
+        if self.n_energies < 2:
+            # Apply the Compton formula
+            # https://en.wikipedia.org/wiki/Compton_scattering
+            # 511 is the electron mass
+            self.cosbeta = 1.0 - self.Ee * 511.0 / (self.E0 * (self.E0 - self.Ee))
+            if self.cosbeta < -1 or self.cosbeta > 1:
+                raise ValueError("Invalid cosbeta")
+            self.sinbeta = sqrt(1 - self.cosbeta**2)
+            self.beta = acos(self.cosbeta)
 
         self.energy_bin = self.get_position_energy(self.E0, self.tol)
         self.xsection[0 : self.energy_bin] = 0.0

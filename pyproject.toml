@@ -1,0 +1,39 @@
+[project]
+name = "coresi"
+version = "0.0.1"
+authors = [
+  { name="Vincent Lequertier", email="vincent.lequertier@creatis.insa-lyon.fr" },
+  { name="Voichita Maxim", email="voichita.maxim@creatis.insa-lyon.fr" },
+]
+description = "Reconstruction for Compton camera"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+  "matplotlib",
+  "torch",
+]
+[project.optional-dependencies]
+test = [
+  "gitpython"
+]
+
+
+[project.urls]
+Homepage = "https://git.creatis.insa-lyon.fr/git/?p=coresi-python.git;a=summary"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+coresi = "coresi.main:run"
+coresi-display = "coresi.display_image:display"
+[tool.hatch.build.targets.sdist]
+include = [
+  "coresi/*.py",
+  "/tests",
+]
+[tool.hatch.build.targets.wheel]
+packages = ["coresi"]

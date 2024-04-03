@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import yaml
 
-from point import Point
+from coresi.point import Point
 
 torch.set_grad_enabled(False)
 logger = getLogger("CORESI")
@@ -37,28 +37,20 @@ class Camera(object):
         self.sca_material = Material(attrs["sca_material"])
         self.avogadro, self.m_e, self.r_e = self.get_physics_constants()
         constants_material_sca = self.read_constants_material(self.sca_material)
-        self.sca_nist = torch.tensor(
-            constants_material_sca.pop("NIST"), device=device
-        )
+        self.sca_nist = torch.tensor(constants_material_sca.pop("NIST"), device=device)
         self.sca_nist_slice = self.sca_nist[:, 0].contiguous()
         # effective density of electrons, number of electrons per unit mass
         self.sca_n_eff = self.get_n_eff(**constants_material_sca)
         self.sca_density = constants_material_sca["density"]
-        logger.debug(
-            "sca layers list" + str([str(layer) for layer in self.sca_layers])
-        )
+        logger.debug("sca layers list" + str([str(layer) for layer in self.sca_layers]))
         self.abs_layers = self.setup_absorbers(attrs)
         self.abs_material = Material(attrs["abs_material"])
         constants_material_abs = self.read_constants_material(self.abs_material)
-        self.abs_nist = torch.tensor(
-            constants_material_abs.pop("NIST"), device=device
-        )
+        self.abs_nist = torch.tensor(constants_material_abs.pop("NIST"), device=device)
         self.abs_nist_slice = self.abs_nist[:, 0].contiguous()
         self.abs_n_eff = self.get_n_eff(**constants_material_abs)
         self.abs_density = constants_material_abs["density"]
-        logger.debug(
-            "abs layers list" + str([str(layer) for layer in self.abs_layers])
-        )
+        logger.debug("abs layers list" + str([str(layer) for layer in self.abs_layers]))
 
         # Define the center of the scatterer (as if the layers would contained in a box)
         # The center is between the first and last layer
@@ -168,9 +160,7 @@ class Camera(object):
                 # about this. How to interpret NIST array values?
             ) / (nist_table[table_index + 1, 0] - nist_table[table_index, 0])
 
-    def get_pair_diff_xsection(
-        self, energy: int, detector_type: DetectorType
-    ) -> float:
+    def get_pair_diff_xsection(self, energy: int, detector_type: DetectorType) -> float:
         table_index, nist_table = self.get_table_and_index(energy, detector_type)
         if torch.all(energy < 1022):
             return torch.zeros_like(energy)

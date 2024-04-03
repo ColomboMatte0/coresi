@@ -5,6 +5,20 @@ conda env create -f conda-env.yaml
 conda activate coresi
 ```
 
+# Run
+
+```bash
+python3 -m coresi.main
+# OR
+coresi
+```
+
+# Display an image
+
+```bash
+python -m coresi.display_image --help
+```
+
 # Run tests
 
 ```bash
@@ -23,7 +37,7 @@ CUDA_VISIBLE_DEVICES="1" python src/main.py
 Supported flags:
 
 ```bash
-python src/main.py --help
+coresi --help
 usage: main.py [-h] [-v] [-c CONFIG] [--sensitivity]
 
 CORESI
@@ -38,3 +52,11 @@ options:
 ```
 
 See the `config.yaml` file for configuring CORESI.
+
+# Packaging
+
+```bash
+python3 -m build
+```
+
+This creates an installable wheel in the `dist/` folder.

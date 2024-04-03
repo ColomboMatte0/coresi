@@ -2,11 +2,13 @@ import matplotlib.pyplot as plt
 import torch
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from point import Point
+from coresi.point import Point
 
 torch.set_grad_enabled(False)
 
 plt.set_loglevel("info")
+
+from matplotlib.patches import Circle
 
 
 class Image:
@@ -41,9 +43,10 @@ class Image:
                 device=device,
             )
 
-    def display_x(self, energy: int = 0, slice: int = 0, title: str = ""):
+    def display_x(self, point, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
         print(self.values.shape)
+        ax.plot(point, marker="^", color="red")
         mappable = ax.imshow(
             self.values[energy, slice, :, :].T.cpu(),
             origin="lower",
@@ -79,6 +82,8 @@ class Image:
         fig.tight_layout()
         plt.show()
 
+        # def display_z(self, point, energy: int = 0, slice: int = 0, title: str = ""):
+
     def display_z(self, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
         mappable = ax.imshow(
@@ -92,6 +97,7 @@ class Image:
             ],
         )
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
+        # ax.add_patch(Circle((point[0], point[1]), radius=0.1, color="red"))
         ax.set_title("First slice of the Z axis view" + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
@@ -117,9 +123,7 @@ class Image:
                         self.center.y + self.dim_in_cm.y / 2,
                     ],
                 )
-                cax = make_axes_locatable(ax).append_axes(
-                    "right", size="5%", pad=0.05
-                )
+                cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
                 ax.set_title(f"{config['E0'][idx]} keV")
                 fig.colorbar(mappable, cax=cax, orientation="vertical")
         else:
