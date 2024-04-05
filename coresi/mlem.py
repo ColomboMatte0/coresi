@@ -432,7 +432,8 @@ class LM_MLEM(object):
         ) / rho_j
 
         # Geometry
-        for idx in torch.where(event.xsection > 0.0)[0]:
+        # for idx in torch.where(event.xsection > 0.0)[0]:
+        for idx in range(event.energy_bin, self.n_energies):
             cos_beta = 1.0 - (
                 self.m_e
                 * event.Ee
@@ -760,7 +761,8 @@ class LM_MLEM(object):
         x_section_m_e = camera.get_photo_diff_xsection(self.m_e, DetectorType.ABS)
 
         # Geometry
-        for idx in torch.where(event.xsection > 0)[0]:
+        # for idx in torch.where(event.xsection > 0.0)[0]:
+        for idx in range(event.energy_bin, self.n_energies):
             cos_beta = 1.0 - (
                 self.m_e
                 * event.Ee
@@ -1148,8 +1150,8 @@ class LM_MLEM(object):
         ) / rho_j
 
         # Geometry
-        for idx in torch.where(event.xsection > 0)[0]:
-            # for idx in range(self.n_energies):
+        # for idx in torch.where(event.xsection > 0)[0]:
+        for idx in range(event.energy_bin, self.n_energies):
             cos_beta = 1.0 - (
                 self.m_e
                 * event.Ee
