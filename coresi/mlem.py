@@ -273,7 +273,7 @@ class LM_MLEM(object):
                     # because the iter param is only used to check whether we need to
                     # verify if the cone intersect the voxel i.e. if we are at the
                     # first iteration
-                    line = self.SM_line(iter - first_iter, event, self.energies != [-1])
+                    line = self.SM_line(iter - first_iter, event)
                 except ValueError as e:
                     logger.debug(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we know we don't need to
@@ -321,7 +321,7 @@ class LM_MLEM(object):
                 )
         return result
 
-    def SM_angular_thickness(self, iter: int, event: Event, known_E0: bool) -> Image:
+    def SM_angular_thickness(self, iter: int, event: Event) -> Image:
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
         rho_j = torch.sqrt(
@@ -394,9 +394,7 @@ class LM_MLEM(object):
 
         return self.line
 
-    def SM_angular_thickness_spectral(
-        self, iter: int, event: Event, known_E0: bool
-    ) -> Image:
+    def SM_angular_thickness_spectral(self, iter: int, event: Event) -> Image:
         """docstring for SM_parallel_thickness_spectral"""
         if event.energy_bin >= self.n_energies:
             logger.fatal(
@@ -725,9 +723,7 @@ class LM_MLEM(object):
 
         return self.line
 
-    def SM_angular_thickness_spectral_precise(
-        self, iter: int, event: Event, known_E0: bool
-    ) -> Image:
+    def SM_angular_thickness_spectral_precise(self, iter: int, event: Event) -> Image:
         if event.energy_bin >= self.n_energies:
             logger.fatal(
                 f"The energy bin has not been determinted correctly for event {str(event.id)}"
@@ -1042,7 +1038,7 @@ class LM_MLEM(object):
 
         return self.line
 
-    def SM_parallel_thickness(self, iter: int, event: Event, known_E0: bool) -> Image:
+    def SM_parallel_thickness(self, iter: int, event: Event) -> Image:
         """docstring for SM_parallel_thickness"""
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
@@ -1113,9 +1109,7 @@ class LM_MLEM(object):
         self.line.values[mask] = KN * self.line.values[mask]
         return self.line
 
-    def SM_parallel_thickness_spectral(
-        self, iter: int, event: Event, known_E0: bool
-    ) -> Image:
+    def SM_parallel_thickness_spectral(self, iter: int, event: Event) -> Image:
         """docstring for SM_parallel_thickness_spectral"""
         if event.energy_bin >= self.n_energies:
             logger.fatal(

@@ -70,10 +70,8 @@ class Event(object):
         # Compute E0 if it's not supplied in the configuration file
         if self.source_E0 == [-1] or len(self.source_E0) > 1:
             self.E0 = self.Ee + self.Eg
-            self.known_E0 = False
         else:
             self.E0 = self.source_E0[0]
-            self.known_E0 = True
         if self.is_hit_in_volume(self.V1):
             logger.fatal(
                 f"The volume intersects the camera for first hit, check whether the camera configuration matches GATE's, and the volume dimension and position. Event: {line}"
