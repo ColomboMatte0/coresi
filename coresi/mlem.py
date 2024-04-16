@@ -459,6 +459,8 @@ class LM_MLEM(object):
                 continue
 
             # Gauss
+            # TODO: Was the a1 values computed by regression with the div by (2
+            # * self.sigma_beta_1[idx] ** 2)?
             self.line.values[idx][mask_cone] = self.a1[idx] * torch.exp(
                 -(self.line.values[idx][mask_cone] ** 2)
                 / (2 * self.sigma_beta_1[idx] ** 2)
