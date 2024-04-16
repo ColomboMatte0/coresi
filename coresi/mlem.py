@@ -273,6 +273,7 @@ class LM_MLEM(object):
                     # because the iter param is only used to check whether we need to
                     # verify if the cone intersect the voxel i.e. if we are at the
                     # first iteration
+                    # This for the case of a first-iter different than 0.
                     line = self.SM_line(iter - first_iter, event)
                 except ValueError as e:
                     logger.debug(f"Skipping event {event.id} REASON: {e}")
@@ -473,6 +474,7 @@ class LM_MLEM(object):
             elif not self.do_nothing:
                 self.line.values[idx] *= self.model(rho_j)
 
+            # Physics
             sca_compton_diff_xsection = camera.get_compton_diff_xsection(
                 self.energies[idx],
                 # ENRIQUE: In Enrique thesis the cosbeta here is
@@ -639,7 +641,7 @@ class LM_MLEM(object):
             )
 
             # zd12
-            # Probability of of going out of the scatterer layer and to the
+            # Probability of going out of the scatterer layer and to the
             # absorber
             kbl_j *= torch.exp(
                 -camera.get_total_diff_xsection(

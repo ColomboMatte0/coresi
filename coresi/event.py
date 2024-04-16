@@ -34,8 +34,7 @@ class Event(object):
         self.source_E0 = E0
         self.n_energies = len(E0)
         # Keep track of valid energies if spectral
-        # This variable hold the xsection for the second hit. This is also
-        # used as a pseudo boolean flag to skip incompatible energies
+        # This is used as a pseudo boolean flag to skip incompatible energies
         # TODO: rename
         self.xsection = torch.tensor(
             [1.0 for _ in range(self.n_energies)], dtype=torch.float
