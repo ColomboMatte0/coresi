@@ -168,9 +168,6 @@ def valencia_4D(
             torch.tensor((camera.Ox, camera.Oy, camera.Oz), dtype=torch.double),
             dims=1,
         ).to(device)
-        points = points[558].unsqueeze(0)
-        print(points.shape)
-        print(points)
         for idx_layer, layer in enumerate(camera.sca_layers):
             # TODO: Use spectral version of the algorithm to sensitivity for all
             # energies at once? Choose an energy at random?

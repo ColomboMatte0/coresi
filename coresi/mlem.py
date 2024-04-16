@@ -599,7 +599,6 @@ class LM_MLEM(object):
             )
             if int2Xsect == 0.0:
                 event.xsection[idx] = 0.0
-                self.line.values[idx] = torch.zeros_like(self.line.values[idx])
                 continue
 
             kbl_j = (
