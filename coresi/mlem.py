@@ -329,6 +329,7 @@ class LM_MLEM(object):
             + (event.V1.y - self.yy) ** 2
             + (event.V1.z - self.zz) ** 2
         ).unsqueeze(0)
+        self.line.set_to_zeros()
 
         # delta j is  angle from the cone axis to the voxel
         # self.xx - event.V1.x is Oj v1. We need it further down in the code but it
@@ -403,6 +404,7 @@ class LM_MLEM(object):
             )
             sys.exit(1)
         camera = self.cameras[event.idx_V1]
+        self.line.set_to_zeros()
 
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
@@ -432,8 +434,7 @@ class LM_MLEM(object):
         ) / rho_j
 
         # Geometry
-        # for idx in torch.where(event.xsection > 0.0)[0]:
-        for idx in range(event.energy_bin, self.n_energies):
+        for idx in torch.where(event.xsection > 0.0)[0]:
             cos_beta = 1.0 - (
                 self.m_e
                 * event.Ee
@@ -600,7 +601,7 @@ class LM_MLEM(object):
             )
             if int2Xsect == 0.0:
                 event.xsection[idx] = 0.0
-                self.line.values[idx] = 0.0
+                self.line.values[idx] = torch.zeros_like(self.line.values[idx])
                 continue
 
             kbl_j = (
@@ -732,6 +733,7 @@ class LM_MLEM(object):
                 f"The energy bin has not been determinted correctly for event {str(event.id)}"
             )
             sys.exit(1)
+        self.line.set_to_zeros()
         camera = self.cameras[event.idx_V1]
 
         # rho_j is a vector with distances from the voxels to the cone origin
@@ -763,8 +765,7 @@ class LM_MLEM(object):
         x_section_m_e = camera.get_photo_diff_xsection(self.m_e, DetectorType.ABS)
 
         # Geometry
-        # for idx in torch.where(event.xsection > 0.0)[0]:
-        for idx in range(event.energy_bin, self.n_energies):
+        for idx in torch.where(event.xsection > 0.0)[0]:
             cos_beta = 1.0 - (
                 self.m_e
                 * event.Ee
@@ -1121,6 +1122,7 @@ class LM_MLEM(object):
                 f"The energy bin has not been determinted correctly for event {str(event.id)}"
             )
             sys.exit(1)
+        self.line.set_to_zeros()
         camera = self.cameras[event.idx_V1]
         # self.line.values = torch.zeros(self.line.values.shape)
 
@@ -1152,8 +1154,7 @@ class LM_MLEM(object):
         ) / rho_j
 
         # Geometry
-        # for idx in torch.where(event.xsection > 0)[0]:
-        for idx in range(event.energy_bin, self.n_energies):
+        for idx in torch.where(event.xsection > 0.0)[0]:
             cos_beta = 1.0 - (
                 self.m_e
                 * event.Ee

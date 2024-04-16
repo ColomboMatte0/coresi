@@ -23,25 +23,35 @@ class Image:
         # Bottom left corner
         self.corner = self.center - (self.dim_in_cm / 2)
 
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.n_energies = n_energies
 
         # Contains the actual values of the image
         if init == "zeros":
             self.values = torch.zeros(
-                n_energies,
+                self.n_energies,
                 self.dim_in_voxels.x,
                 self.dim_in_voxels.y,
                 self.dim_in_voxels.z,
-                device=device,
+                device=self.device,
             )
         if init == "ones":
             self.values = torch.ones(
-                n_energies,
+                self.n_energies,
                 self.dim_in_voxels.x,
                 self.dim_in_voxels.y,
                 self.dim_in_voxels.z,
-                device=device,
+                device=self.device,
             )
+
+    def set_to_zeros(self):
+        self.values = torch.zeros(
+            self.n_energies,
+            self.dim_in_voxels.x,
+            self.dim_in_voxels.y,
+            self.dim_in_voxels.z,
+            device=self.device,
+        )
 
     def display_x(self, point, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
