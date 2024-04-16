@@ -20,6 +20,21 @@ parser.add_argument(
     help="Path to the configuration file",
     type=Path,
 )
+
+parser.add_argument(
+    "-s",
+    "--slice",
+    default=0,
+    help="Slice number",
+    type=int,
+)
+parser.add_argument(
+    "-p",
+    "--projection",
+    default="z",
+    help="Projection x, y or z",
+    type=str,
+)
 parser.add_argument(
     "--cpp",
     action=argparse.BooleanOptionalAction,
@@ -45,10 +60,24 @@ def display():
         image.values = torch.load(args.image, map_location=torch.device("cpu"))
 
     for e in range(image.values.shape[0]):
-        image.display_z(
-            energy=e,
-            title=f" {str(config['E0'][e])} keV" + (" CPP" if args.cpp else ""),
-        )
+        if args.projection == "z":
+            image.display_z(
+                energy=e,
+                title=f" {str(config['E0'][e])} keV" + (" CPP" if args.cpp else ""),
+                slice=args.slice,
+            )
+        if args.projection == "x":
+            image.display_x(
+                energy=e,
+                title=f" {str(config['E0'][e])} keV" + (" CPP" if args.cpp else ""),
+                slice=args.slice,
+            )
+        if args.projection == "y":
+            image.display_y(
+                energy=e,
+                title=f" {str(config['E0'][e])} keV" + (" CPP" if args.cpp else ""),
+                slice=args.slice,
+            )
 
 
 if __name__ == "__main__":

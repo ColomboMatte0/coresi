@@ -53,10 +53,9 @@ class Image:
             device=self.device,
         )
 
-    def display_x(self, point, energy: int = 0, slice: int = 0, title: str = ""):
+    def display_x(self, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
         print(self.values.shape)
-        ax.plot(point, marker="^", color="red")
         mappable = ax.imshow(
             self.values[energy, slice, :, :].T.cpu(),
             origin="lower",
