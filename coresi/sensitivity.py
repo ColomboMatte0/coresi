@@ -1,13 +1,12 @@
+import random
 from logging import getLogger
 
-import random
-import matplotlib.pyplot as plt
 import torch
-import numpy as np
 
 from coresi.camera import Camera
 from coresi.event import Event
 from coresi.image import Image
+from coresi.interpolation import torch_1d_interp
 from coresi.point import Point
 
 torch.set_grad_enabled(False)
@@ -230,10 +229,9 @@ def lyon_4D(
 ):
     """Compute a system matrix by computing the probability of a random gammas
     reaching the cameras detectos"""
-    cameras = [cameras[0]]
     sensitivity_vol = Image(len(energies), volume_config)
-    angles = torch.arange(0, 181, 1) * 3.14159 / 180
-    cdf_compton = cameras[0].cdf_compton_diff_xsection(energies, angles).numpy()
+    angles = torch.arange(0, 181, 1).deg2rad()
+    cdf_compton = cameras[0].cdf_compton_diff_xsection(energies, angles)
     for camera in cameras:
         for idx_energy, energy in enumerate(energies):
             valid_events = 0
@@ -243,9 +241,7 @@ def lyon_4D(
                 x1 = generate_random_point(sca.dim, sca.center, 1)[0]
                 x2 = generate_random_point(abs.dim, abs.center, 1)[0]
                 beta = generate_random_angle(cdf_compton, angles, idx_energy)
-                E_gamma = energy / (
-                    1 + (energy / 511.0) * (1 - torch.cos(torch.tensor(beta)))
-                )
+                E_gamma = energy / (1 + (energy / 511.0) * (1 - torch.cos(beta)))
                 # The Event class does the conversion to centimeters
                 x1 = x1 * 10
                 x2 = x2 * 10
@@ -273,10 +269,10 @@ def lyon_4D(
     return sensitivity_vol.values / mc_samples
 
 
-def generate_random_angle(cdf_KN: torch.Tensor, angles: list, energy_idx: int):
+def generate_random_angle(cdf_KN: torch.Tensor, angles: torch.Tensor, energy_idx: int):
     """docstring for generate_random_angle"""
     x = torch.distributions.uniform.Uniform(0, 1).sample((1,))
-    return np.interp(x[0], cdf_KN[energy_idx], angles)
+    return torch_1d_interp(x[0], cdf_KN[energy_idx], angles)
 
 
 def generate_random_point(dim: Point, center: Point, n_points: int) -> torch.Tensor:
