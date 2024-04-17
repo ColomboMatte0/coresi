@@ -130,8 +130,10 @@ class Camera(object):
             logger.fatal(f"Failed to load constants for material {material}: {e}")
             sys.exit(1)
 
-    def get_compton_diff_xsection(self, energy: int, cosbeta):
-        P = 1.0 / (1.0 + (energy / self.m_e) * (1 - (cosbeta)))
+    def get_compton_diff_xsection(
+        self, energy: int, cosbeta: float | torch.Tensor
+    ) -> float | torch.Tensor:
+        P = 1.0 / (1.0 + energy / self.m_e * (1 - cosbeta))
         # ENRIQUE: Why avogadro number is involved, and issue with the units
         # compared to regular KN formula and Enrique's thesis?
         return (
@@ -139,6 +141,26 @@ class Camera(object):
             * torch.pow(P, 2)
             * (P + 1.0 / P - 1.0 + torch.pow(cosbeta, 2))
         )
+
+    def cdf_compton_diff_xsection(
+        self, energies: list, angles: torch.Tensor
+    ) -> torch.Tensor:
+        """get the cumulative probability of Compton scattering for a list of
+        energies. Used to generate random Compton scattering angles"""
+        cdf_angles = []
+        for energy in energies:
+            KN = torch.tensor(
+                [
+                    self.get_compton_diff_xsection(energy, torch.cos(angle))
+                    for angle in angles
+                ]
+            )
+            cdf_KN = torch.cumsum(KN, dim=0)
+            cdf_KN = (cdf_KN[0:-1] + cdf_KN[1:]) / 2
+            cdf_KN = torch.cat([torch.tensor([0]), cdf_KN]) / cdf_KN[-1]
+            cdf_angles.append(cdf_KN)
+
+        return torch.stack(cdf_angles, dim=0)
 
     def get_photo_diff_xsection(
         self, energy: int, detector_type: DetectorType

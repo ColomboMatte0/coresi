@@ -1,7 +1,9 @@
 from logging import getLogger
 
+import random
 import matplotlib.pyplot as plt
 import torch
+import numpy as np
 
 from coresi.camera import Camera
 from coresi.event import Event
@@ -150,9 +152,7 @@ def valencia_4D(
     reaching the cameras detectos"""
     cameras = [cameras[0]]
     sensitivity_vol = Image(len(energies), volume_config)
-    print(sensitivity_vol.values.shape)
     for camera in cameras:
-        camera.sca_layers = [camera.sca_layers[2]]
         points = torch.tensordot(
             (
                 torch.tensor(
@@ -192,9 +192,7 @@ def valencia_4D(
                     x2 = x2 * 10
                     for idx in range(len(E_gamma)):
                         # Forge an event with the GATE line's format
-                        print(energy - E_gamma[idx])
                         line = f"2\t1\t{x1[idx][0]}\t{x1[idx][1]}\t{x1[idx][2]}\t{energy - E_gamma[idx]}\t2\t{x2[idx][0]}\t{x2[idx][1]}\t{x2[idx][2]}\t{E_gamma[idx]}\t3\t0\t0\t0\t0"
-                        print(line)
                         try:
                             event = Event(
                                 0,
@@ -218,6 +216,67 @@ def valencia_4D(
                             continue
 
     return sensitivity_vol.values / mc_samples, points
+
+
+def lyon_4D(
+    cameras: list[Camera],
+    volume_config: dict,
+    x: torch.Tensor,
+    y: torch.Tensor,
+    z: torch.Tensor,
+    energies: list[float],
+    SM_line: callable,
+    mc_samples: int = 1,
+):
+    """Compute a system matrix by computing the probability of a random gammas
+    reaching the cameras detectos"""
+    cameras = [cameras[0]]
+    sensitivity_vol = Image(len(energies), volume_config)
+    angles = torch.arange(0, 181, 1) * 3.14159 / 180
+    cdf_compton = cameras[0].cdf_compton_diff_xsection(energies, angles).numpy()
+    for camera in cameras:
+        for idx_energy, energy in enumerate(energies):
+            valid_events = 0
+            while valid_events < mc_samples:
+                sca = random.choice(camera.sca_layers)
+                abs = random.choice(camera.abs_layers)
+                x1 = generate_random_point(sca.dim, sca.center, 1)[0]
+                x2 = generate_random_point(abs.dim, abs.center, 1)[0]
+                beta = generate_random_angle(cdf_compton, angles, idx_energy)
+                E_gamma = energy / (
+                    1 + (energy / 511.0) * (1 - torch.cos(torch.tensor(beta)))
+                )
+                # The Event class does the conversion to centimeters
+                x1 = x1 * 10
+                x2 = x2 * 10
+                # Forge an event with the GATE line's format
+                line = f"2\t1\t{x1[0]}\t{x1[1]}\t{x1[2]}\t{energy - E_gamma}\t2\t{x2[0]}\t{x2[1]}\t{x2[2]}\t{E_gamma}\t3\t0\t0\t0\t0"
+                try:
+                    event = Event(
+                        0,
+                        line,
+                        energies,
+                        Point(*volume_config["volume_centre"]),
+                        Point(*volume_config["volume_dimensions"]),
+                    )
+                    event.set_camera_index([camera])
+                except ValueError as e:
+                    logger.debug(f"Skipping event {line.strip()} REASON: {e}")
+                    continue
+                try:
+                    sensitivity_vol.values += SM_line(0, event).values
+                except ValueError as e:
+                    logger.debug(f"Skipping forged event {line.strip()} REASON: {e}")
+                    continue
+                valid_events += 1
+
+    return sensitivity_vol.values / mc_samples
+
+
+def generate_random_angle(cdf_KN: torch.Tensor, angles: list, energy_idx: int):
+    """docstring for generate_random_angle"""
+    x = torch.distributions.uniform.Uniform(0, 1).sample((1,))
+    return np.interp(x[0], cdf_KN[energy_idx], angles)
 
 
 def generate_random_point(dim: Point, center: Point, n_points: int) -> torch.Tensor:

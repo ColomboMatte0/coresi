@@ -368,6 +368,7 @@ class LM_MLEM(object):
         )
 
         # lambda / lambda prime
+        # TODO: use get_compton_diff_xsection
         KN = 1.0 / (1.0 + event.E0 / self.m_e * (1.0 - cos_delta_j[mask]))
 
         # KN is the Klein–Nishina formula to obtain the differential cross
@@ -1097,6 +1098,7 @@ class LM_MLEM(object):
             self.line.values *= self.model(rho_j)
 
         # lambda / lambda prime
+        # TODO: use get_compton_diff_xsection
         KN = 1.0 / (1.0 + event.E0 / self.m_e * (1.0 - cos_delta_j[mask]))
 
         # KN is the Klein–Nishina formula to obtain the differential cross
@@ -1618,14 +1620,8 @@ class LM_MLEM(object):
             logger.info(
                 f"Computing sensitivity values with a Monte Carlo simulation and {SM_line.__name__}"
             )
-            sensitivity.values = sensitivity_models.valencia_4D(
-                cameras,
-                volume_config,
-                x,
-                y,
-                z,
-                energies,
-                SM_line,
+            sensitivity.values = sensitivity_models.lyon_4D(
+                cameras, volume_config, x, y, z, energies, SM_line, mc_samples=5000
             )
 
         if config_mlem["sensitivity_point_samples"] < 1:
