@@ -40,3 +40,12 @@ def torch_1d_interp(
     )
     answer = torch.where(x > xp[-1], right, answer)
     return answer
+
+
+def interpolate(volume: torch.Tensor, new_size: list) -> torch.Tensor:
+    return torch.nn.functional.interpolate(
+        # Unsqueeze to add a batch dimension
+        volume.unsqueeze(0),
+        size=new_size,
+        mode="trilinear",
+    )

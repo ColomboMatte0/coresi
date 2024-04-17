@@ -80,14 +80,6 @@ checkpoint_dir.mkdir(parents=True, exist_ok=True)
 def run():
     start = time.time()
     if args.sensitivity:
-        # if config["lm_mlem"]["sensitivity_point_samples"] < 1:
-        # Fake a smaller volume to fool SM_line
-        # config["volume"]["n_voxels"] = [
-        #    int(n_voxel * config["lm_mlem"]["sensitivity_point_samples"])
-        #    if n_voxel > 1
-        #    else n_voxel
-        #    for n_voxel in config["volume"]["n_voxels"]
-        # ]
         mlem = LM_MLEM(
             config["lm_mlem"],
             config["volume"],
