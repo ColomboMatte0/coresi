@@ -260,7 +260,13 @@ def lyon_4D(
                     logger.debug(f"Skipping event {line.strip()} REASON: {e}")
                     continue
                 try:
-                    sensitivity_vol.values += SM_line(0, event).values
+                    result = SM_line(0, event).values
+                    # Because we want a sensitivity for a given energy, ensure
+                    # that the SM line for the given energy is non-zero
+                    if result[idx_energy].any():
+                        sensitivity_vol.values = sensitivity_vol.values + result
+                    else:
+                        raise ValueError(f"Got zeros for energy {energy} keV")
                 except ValueError as e:
                     logger.debug(f"Skipping forged event {line.strip()} REASON: {e}")
                     continue
