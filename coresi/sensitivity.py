@@ -272,7 +272,10 @@ def lyon_4D(
                     continue
                 valid_events += 1
 
-    return sensitivity_vol.values / mc_samples
+    # We only do the sum here rather than the average because it's unlikely we
+    # get high values as the chance the cone goes perfectly through the
+    # voxel is low
+    return sensitivity_vol.values
 
 
 def generate_random_angle(cdf_KN: torch.Tensor, angles: torch.Tensor, energy_idx: int):
