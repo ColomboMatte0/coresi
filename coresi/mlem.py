@@ -1458,15 +1458,6 @@ class LM_MLEM(object):
             self.sensitivity.values = torch.from_numpy(
                 np.fromfile(config_mlem["sensitivity_file"])
             ).reshape(self.sensitivity.values.shape)
-        elif config_mlem["sensitivity"]:
-            self.sensitivity.values = LM_MLEM.compute_sensitivity(
-                self.energies,
-                self.config_volume,
-                self.cameras,
-                self.SM_line,
-                config_mlem,
-                checkpoint_dir,
-            )
         else:
             logger.info("Sensivitiy is disabled, setting it to ones")
 
