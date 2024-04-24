@@ -12,7 +12,7 @@ import coresi.sensitivity as sensitivity_models
 from coresi.camera import Camera, DetectorType
 from coresi.event import Event
 from coresi.image import Image
-from coresi.point import Point
+from coresi.tv import TV_denoise, TV_dual_denoising
 
 logger = getLogger("CORESI")
 torch.set_grad_enabled(False)
@@ -33,6 +33,8 @@ class LM_MLEM(object):
         super(LM_MLEM, self).__init__()
 
         self.cone_thickness = config_mlem["cone_thickness"]
+        self.tv = config_mlem["tv"]
+        self.alpha_tv = config_mlem["alpha_tv"]
 
         self.compute_theta_j = True
         if config_mlem["model"] == "cos0rho0":
@@ -303,8 +305,11 @@ class LM_MLEM(object):
                 result.values = (
                     result.values / self.sensitivity.values * next_result.values
                 )
-            # TV here
-            # result.values = tv(result.values)
+            if self.tv is True:
+                for idx in range(self.n_energies):
+                    result.values[idx] = TV_dual_denoising(
+                        result.values[idx], self.sensitivity.values[idx], self.alpha_tv
+                    )
 
             # It must be re-initialized as zero as temporary values are sumed
             next_result.values = torch.zeros(
