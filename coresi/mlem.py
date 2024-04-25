@@ -566,7 +566,7 @@ class LM_MLEM(object):
                     int2Xsect += (
                         camera.abs_density
                         * pair_x_section
-                        * np.exp(
+                        * torch.exp(
                             -photo_x_section_m_e
                             * camera.abs_density
                             * (camera.sca_layers + camera.abs_layers)[
@@ -583,7 +583,7 @@ class LM_MLEM(object):
                         * camera.abs_density
                         * pair_x_section
                         * (
-                            np.exp(
+                            torch.exp(
                                 -photo_x_section_m_e
                                 * camera.abs_density
                                 * (camera.sca_layers + camera.abs_layers)[
@@ -593,7 +593,7 @@ class LM_MLEM(object):
                             )
                             # ENRIQUE: why difference of two exponentials. Why not
                             # multiplication of probabilities?. and exp * (1-exp)?
-                            - np.exp(
+                            - torch.exp(
                                 --photo_x_section_m_e
                                 * camera.abs_density
                                 * (camera.sca_layers + camera.abs_layers)[
@@ -1278,7 +1278,7 @@ class LM_MLEM(object):
                     int2Xsect += (
                         camera.abs_density
                         * pair_x_section
-                        * np.exp(
+                        * torch.exp(
                             -photo_x_section_m_e
                             * camera.abs_density
                             * (camera.sca_layers + camera.abs_layers)[
@@ -1295,7 +1295,7 @@ class LM_MLEM(object):
                         * camera.abs_density
                         * pair_x_section
                         * (
-                            np.exp(
+                            torch.exp(
                                 -photo_x_section_m_e
                                 * camera.abs_density
                                 * (camera.sca_layers + camera.abs_layers)[
@@ -1305,7 +1305,7 @@ class LM_MLEM(object):
                             )
                             # ENRIQUE: why difference of two exponentials. Why not
                             # multiplication of probabilities?. and exp * (1-exp)?
-                            - np.exp(
+                            - torch.exp(
                                 --photo_x_section_m_e
                                 * camera.abs_density
                                 * (camera.sca_layers + camera.abs_layers)[
