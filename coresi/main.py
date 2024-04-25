@@ -144,7 +144,7 @@ def run():
 
     if args.display:
         for e in range(len(config["E0"])):
-            result.display_z(energy=e)
+            result.display_z(energy=e, title=f"{str(config['E0'][e])} keV")
     plt.show()
 
 
