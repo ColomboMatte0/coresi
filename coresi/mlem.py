@@ -1460,9 +1460,15 @@ class LM_MLEM(object):
             logger.info(
                 f"Taking sensitivity from file {config_mlem['sensitivity_file']}"
             )
-            self.sensitivity.values = torch.from_numpy(
-                np.fromfile(config_mlem["sensitivity_file"])
-            ).reshape(self.sensitivity.values.shape)
+            # If the file is saved with numpy or CORESI in C++
+            if config_mlem["sensitivity_file"].split(".")[-1] in ["npy", "raw"]:
+                self.sensitivity.values = torch.from_numpy(
+                    np.fromfile(config_mlem["sensitivity_file"])
+                ).reshape(self.sensitivity.values.shape)
+
+            # If the file was saved with torch.save
+            else:
+                self.sensitivity.values = torch.load(config_mlem["sensitivity_file"])
         else:
             logger.info("Sensivitiy is disabled, setting it to ones")
 
@@ -1547,10 +1553,10 @@ class LM_MLEM(object):
             )
 
         logger.info(
-            f"Sensitivity done, saving to {str(checkpoint_dir / 'sensitivity.npy')}"
+            f"Sensitivity done, saving to {str(checkpoint_dir / 'sensitivity.pth')}"
         )
         torch.save(
             sensitivity.values,
-            checkpoint_dir / "sensitivity.npy",
+            checkpoint_dir / "sensitivity.pth",
         )
         return sensitivity.values
