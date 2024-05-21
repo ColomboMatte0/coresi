@@ -110,7 +110,7 @@ class Image:
         ax.set_title("First slice of the Z axis view" + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
-        plt.show()
+        # plt.show()
 
     def save_all(
         self,
@@ -151,7 +151,7 @@ class Image:
             ax.set_title(f"{config['E0'][0]} keV")
             fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.suptitle(
-            f"{'C++' if cpp else 'Python version ' + commit} Sensitivity: {config['lm_mlem']['sensitivity_model'] if config['lm_mlem']['sensitivity'] else 'False'}, Algorithm: {config['lm_mlem']['cone_thickness']}\nModel: {config['lm_mlem']['model']}, Iterations: {int(config['lm_mlem']['last_iter'] - config['lm_mlem']['first_iter'])}, n_events: {config['n_events']}"
+            f"{'C++' if cpp else 'version ' + commit} Sensitivity: {config['lm_mlem']['sensitivity_model'] if config['lm_mlem']['sensitivity'] else 'False'}, Algorithm: {config['lm_mlem']['cone_thickness']}\nModel: {config['lm_mlem']['model']}, Iterations: {int(config['lm_mlem']['last_iter'] - config['lm_mlem']['first_iter'])}, n_events: {config['n_events']}, dual denoising: {str(config['lm_mlem']['tv'])}"
         )
         fig.tight_layout()
         fig.savefig(config_name)
