@@ -12,7 +12,7 @@ import coresi.sensitivity as sensitivity_models
 from coresi.camera import Camera, DetectorType
 from coresi.event import Event
 from coresi.image import Image
-from coresi.tv import TV_denoise, TV_dual_denoising
+from coresi.tv import TV_dual_denoising
 
 logger = getLogger("CORESI")
 torch.set_grad_enabled(False)
