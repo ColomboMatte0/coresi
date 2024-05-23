@@ -30,9 +30,7 @@ def torch_gradient(a: torch.Tensor) -> torch.Tensor:
         dim, *[1 for _ in range(dim)]
     )
     for d in range(dim):
-        grad[d] = torch.diff(
-            a, 1, axis=d, append=a.select(dim=d, index=-1).unsqueeze(d)
-        )
+        grad[d] = torch.diff(a, 1, dim=d, append=a.select(dim=d, index=-1).unsqueeze(d))
     return grad
 
 
@@ -56,7 +54,7 @@ def torch_gradient_div(a: torch.Tensor) -> torch.Tensor:
     )
     for d in range(dim):
         grad[d] = torch.diff(
-            a, 1, axis=d, prepend=a.select(dim=d, index=-1).unsqueeze(d)
+            a, 1, dim=d, prepend=a.select(dim=d, index=-1).unsqueeze(d)
         )
     return grad
 
