@@ -11,7 +11,7 @@ Iterative algorithms for the reconstruction
 """
 
 
-def torch_gradient(a):
+def torch_gradient(a: torch.Tensor) -> torch.Tensor:
     """
     Compute gradient of a
 
@@ -36,7 +36,7 @@ def torch_gradient(a):
     return grad
 
 
-def torch_gradient_div(a):
+def torch_gradient_div(a: torch.Tensor) -> torch.Tensor:
     """
     Compute gradient of a
 
@@ -79,7 +79,7 @@ def torch_divergence(u):
     return torch.stack([torch_gradient_div(u[d])[d] for d in range(dim)]).sum(dim=0)
 
 
-def torch_module(q):
+def torch_module(q: torch.Tensor) -> torch.Tensor:
     """
     Compute the module
 
@@ -97,7 +97,7 @@ def torch_module(q):
     return torch.sqrt(torch.sum(torch.pow(q, 2), axis=0))
 
 
-def torch_TV(x):
+def torch_TV(x: torch.Tensor) -> float:
     """
     Compute TV norm of x
 
@@ -116,7 +116,13 @@ def torch_TV(x):
     return float(torch.sum(res))
 
 
-def TV_denoise(f: torch.Tensor, alpha: float = 12, iters: int = 3, tol=0.01, tau=0.248):
+def TV_denoise(
+    f: torch.Tensor,
+    alpha: float = 12,
+    iters: int = 3,
+    tol: float = 0.01,
+    tau: float = 0.248,
+) -> torch.Tensor:
     """
     Denoise the image f with Chambolle's projection algorithm. used for gaussian
     noise
@@ -290,7 +296,7 @@ def TV_dual_denoising(
     return f
 
 
-def div_zer(a, b):
+def div_zer(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     assert a.shape == b.shape, "Both matrix should have the same size"
     new = torch.zeros_like(a)
     mask = b > 0
