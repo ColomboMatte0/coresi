@@ -1559,7 +1559,7 @@ class LM_MLEM(object):
             f"Sensitivity done, saving to {str(checkpoint_dir / 'sensitivity.pth')}"
         )
         torch.save(
-            sensitivity.values,
+            sensitivity.values.cpu(),
             checkpoint_dir / "sensitivity.pth",
         )
         return sensitivity.values
