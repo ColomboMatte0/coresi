@@ -10,7 +10,7 @@ from pathlib import Path
 import git
 import yaml
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../src")
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../coresi")
 
 import numpy as np
 import torch
