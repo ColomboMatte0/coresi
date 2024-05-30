@@ -8,8 +8,6 @@ _ = torch.set_grad_enabled(False)
 
 plt.set_loglevel("info")
 
-from matplotlib.patches import Circle
-
 
 class Image:
     """docstring for Image"""
