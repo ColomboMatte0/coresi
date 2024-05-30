@@ -10,6 +10,7 @@ Iterative algorithms for the reconstruction
 @author: Louise Friot--Giroux and adapted to PyTorch by Vincent Lequertier
 """
 
+torch.set_grad_enabled(False)
 
 def torch_gradient(a: torch.Tensor) -> torch.Tensor:
     """
