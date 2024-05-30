@@ -15,7 +15,7 @@ from coresi.image import Image
 from coresi.tv import TV_dual_denoising
 
 logger = getLogger("CORESI")
-torch.set_grad_enabled(False)
+_ = torch.set_grad_enabled(False)
 
 
 class LM_MLEM(object):

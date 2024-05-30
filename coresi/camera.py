@@ -9,7 +9,7 @@ import yaml
 
 from coresi.point import Point
 
-torch.set_grad_enabled(False)
+_ = torch.set_grad_enabled(False)
 logger = getLogger("CORESI")
 
 

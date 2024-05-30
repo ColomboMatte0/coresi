@@ -9,7 +9,7 @@ from coresi.image import Image
 from coresi.interpolation import torch_1d_interp
 from coresi.point import Point
 
-torch.set_grad_enabled(False)
+_ = torch.set_grad_enabled(False)
 
 logger = getLogger("CORESI")
 

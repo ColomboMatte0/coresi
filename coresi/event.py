@@ -8,7 +8,7 @@ from coresi.camera import Camera, DetectorType
 from coresi.point import Point
 
 logger = getLogger("CORESI")
-torch.set_grad_enabled(False)
+_ = torch.set_grad_enabled(False)
 
 
 class Event(object):

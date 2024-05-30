@@ -4,7 +4,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from coresi.point import Point
 
-torch.set_grad_enabled(False)
+_ = torch.set_grad_enabled(False)
 
 plt.set_loglevel("info")
 
