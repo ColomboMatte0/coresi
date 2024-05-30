@@ -28,26 +28,26 @@ class Image:
         if init == "zeros":
             self.values = torch.zeros(
                 self.n_energies,
-                self.dim_in_voxels.x,
-                self.dim_in_voxels.y,
-                self.dim_in_voxels.z,
+                int(self.dim_in_voxels.x),
+                int(self.dim_in_voxels.y),
+                int(self.dim_in_voxels.z),
                 device=self.device,
             )
         if init == "ones":
             self.values = torch.ones(
                 self.n_energies,
-                self.dim_in_voxels.x,
-                self.dim_in_voxels.y,
-                self.dim_in_voxels.z,
+                int(self.dim_in_voxels.x),
+                int(self.dim_in_voxels.y),
+                int(self.dim_in_voxels.z),
                 device=self.device,
             )
 
     def set_to_zeros(self):
         self.values = torch.zeros(
             self.n_energies,
-            self.dim_in_voxels.x,
-            self.dim_in_voxels.y,
-            self.dim_in_voxels.z,
+            int(self.dim_in_voxels.x),
+            int(self.dim_in_voxels.y),
+            int(self.dim_in_voxels.z),
             device=self.device,
         )
 

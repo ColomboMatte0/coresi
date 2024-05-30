@@ -105,7 +105,7 @@ class Camera(object):
         # others. Therefore, if an absorber layer is missing, add None in the
         # list to avoid breaking the convention
         self.n_abs_layers = attrs["n_absorbers"]
-        abs_layers: list["Layer" | None] = []
+        abs_layers: list[type["Layer"] | None] = []
         for idx in range(self.n_abs_layers):
             if attrs[f"abs_layer_{idx}"] is None:
                 abs_layers.append(None)
@@ -199,7 +199,7 @@ class Camera(object):
             )
 
     def get_total_diff_xsection(
-        self, energy: int, detector_type: DetectorType
+        self, energy: int | torch.Tensor, detector_type: DetectorType
     ) -> float:
         table_index, nist_table = self.get_table_and_index(energy, detector_type)
         if isinstance(energy, float):
