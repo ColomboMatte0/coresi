@@ -1,7 +1,6 @@
 import sys
 from enum import StrEnum
 from logging import getLogger
-from typing import Union
 
 import numpy as np
 import torch
@@ -98,7 +97,7 @@ class Camera(object):
             )
         )
 
-    def setup_absorbers(self, attrs: dict) -> list[Union["Layer", None]]:
+    def setup_absorbers(self, attrs: dict) -> list[type["Layer"] | None]:
         """Their might be multiple absorbers to improve the detection
         accuracy. Create a Layer object per absorber"""
 
