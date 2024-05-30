@@ -1,5 +1,8 @@
-import torch
+from logging import getLogger
 from math import sqrt
+import sys
+
+import torch
 
 # -*- coding: utf-8 -*-
 """
@@ -10,7 +13,9 @@ Iterative algorithms for the reconstruction
 @author: Louise Friot--Giroux and adapted to PyTorch by Vincent Lequertier
 """
 
+logger = getLogger("CORESI")
 _ = torch.set_grad_enabled(False)
+
 
 def torch_gradient(a: torch.Tensor) -> torch.Tensor:
     """
@@ -60,7 +65,7 @@ def torch_gradient_div(a: torch.Tensor) -> torch.Tensor:
     return grad
 
 
-def torch_divergence(u):
+def torch_divergence(u: torch.Tensor) -> torch.Tensor:
     """
     Compute divergence of u
 
@@ -93,7 +98,7 @@ def torch_module(q: torch.Tensor) -> torch.Tensor:
         (m)_ij = ((q1)_ij**2 + (q2)_ik**2))**(1/2))
         dimension of m : (Nx,Ny)
     """
-    return torch.sqrt(torch.sum(torch.pow(q, 2), axis=0))
+    return torch.sqrt(torch.sum(torch.pow(q, 2), dim=0))
 
 
 def torch_TV(x: torch.Tensor) -> float:
@@ -175,7 +180,9 @@ def pos(x_pos: torch.Tensor):
     return test
 
 
-def CP_denoise(f: torch.Tensor, alpha: float = torch.tensor(1e3), iters: int = 20):
+def CP_denoise(
+    f: torch.Tensor, alpha: float = torch.tensor(1e3), iters: int = 20
+) -> torch.Tensor:
     """
     Denoise the image f with Chambolle Pock algorithm
 
@@ -268,7 +275,8 @@ def TV_dual_denoising(
         den[den < 0] = torch.min(s)
         Lh = 12 * alpha**2 * s * f / den**2
     else:
-        print("Something is wrong, good luck !")
+        logger.fatal("Something is wrong, good luck !")
+        sys.exit(1)
 
     tau = 0.9 * alpha * div_zer(torch.ones_like(Lh), Lh)
 
