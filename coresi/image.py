@@ -152,8 +152,3 @@ class Image:
         )
         fig.tight_layout()
         fig.savefig(config_name)
-
-    def read_file(self, file_name: str) -> None:
-        self.values = self.xp.fromfile(file_name, dtype="double").reshape(
-            self.dim_in_voxels.x, self.dim_in_voxels.y, self.dim_in_voxels.z
-        )
