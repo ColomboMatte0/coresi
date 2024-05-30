@@ -120,7 +120,7 @@ class Camera(object):
         """effective number density of electrons in mol*cm^-3"""
         return eff * density * self.avogadro / moll_mass
 
-    def read_constants_material(self, material: Material):
+    def read_constants_material(self, material: Material) -> dict:
         """docstring for read_constants_material"""
         try:
             with open("constants.yaml", "r") as fh:
@@ -142,7 +142,7 @@ class Camera(object):
         )
 
     def cdf_compton_diff_xsection(
-        self, energies: list, angles: torch.Tensor
+        self, energies: list[float], angles: torch.Tensor
     ) -> torch.Tensor:
         """get the cumulative probability of Compton scattering for a list of
         energies. Used to generate random Compton scattering angles"""
@@ -217,7 +217,7 @@ class Camera(object):
 
     def get_table_and_index(
         self, energy: float, detector_type: DetectorType
-    ) -> tuple[int, torch.tensor]:
+    ) -> tuple[int, torch.Tensor]:
         # Convert to MeV
         # Divide this way to avoid modifying by reference
         energy = energy / 1000

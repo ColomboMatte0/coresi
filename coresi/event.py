@@ -16,9 +16,9 @@ class Event(object):
         self,
         line_idx: int,
         line: str,
-        E0: list,
-        volume_center,
-        volume_dim,
+        E0: list[int],
+        volume_center: Point,
+        volume_dim: Point,
         format: str = "GATE",
         tol: float = 1e1,
     ):

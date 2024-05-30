@@ -12,7 +12,7 @@ plt.set_loglevel("info")
 class Image:
     """docstring for Image"""
 
-    def __init__(self, n_energies: int, config: dict, init="zeros"):
+    def __init__(self, n_energies: int, config: dict, init: str = "zeros"):
         super(Image, self).__init__()
         self.dim_in_voxels = Point(*config["n_voxels"])
         self.dim_in_cm = Point(*config["volume_dimensions"])
@@ -53,7 +53,6 @@ class Image:
 
     def display_x(self, energy: int = 0, slice: int = 0, title: str = ""):
         fig, ax = plt.subplots()
-        print(self.values.shape)
         mappable = ax.imshow(
             self.values[energy, slice, :, :].T.cpu(),
             origin="lower",
