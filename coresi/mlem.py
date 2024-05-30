@@ -1471,7 +1471,9 @@ class LM_MLEM(object):
                 self.sensitivity.values = torch.load(config_mlem["sensitivity_file"])
             # If the sensitivity was computed from GPU but no GPU is available
             else:
-                self.sensitivity.values = torch.load(config_mlem["sensitivity_file"], map_location=torch.device('cpu'))
+                self.sensitivity.values = torch.load(
+                    config_mlem["sensitivity_file"], map_location=torch.device("cpu")
+                )
         else:
             logger.info("Sensivitiy is disabled, setting it to ones")
 
