@@ -1,5 +1,6 @@
 import random
 from logging import getLogger
+from typing import Callable
 
 import torch
 
@@ -142,7 +143,7 @@ def lyon_4D(
     y: torch.Tensor,
     z: torch.Tensor,
     energies: list[float],
-    SM_line: callable,
+    SM_line: Callable[[int, Event], Image],
     mc_samples: int = 1,
 ):
     """Compute a system matrix by computing the probability of a random gammas
