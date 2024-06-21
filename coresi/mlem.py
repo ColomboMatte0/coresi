@@ -328,6 +328,117 @@ class LM_MLEM(object):
                 )
         return result
 
+    def run_projector(
+        self,
+        events: list[Event],
+        last_iter: int,
+        first_iter: int = 0,
+        save_every: int = 10,
+        checkpoint_dir: Path = Path("checkpoints"),
+    ):
+        """docstring for run"""
+
+        if first_iter > last_iter:
+            logger.fatal(
+                f"The first iteration should be less than the last iteration, first is {first_iter} and last is {last_iter}"
+            )
+            sys.exit(1)
+        # Was lambda in C++ but lambda is a reserved keyword in Python
+        result = Image(self.n_energies, self.config_volume, init="ones")
+
+        # Load a checkpoint if necessary
+        if first_iter > 0:
+            try:
+                logger.info(
+                    f"The first iteration is set to {str(first_iter)}, trying to load {checkpoint_dir / self.run_name}.iter.{str(first_iter - 1)}.npy"
+                )
+                checkpoint = torch.load(
+                    checkpoint_dir / f"{self.run_name}.iter.{str(first_iter - 1)}.npy"
+                )
+            except IOError as e:
+                logger.fatal(f"The checkpoint could not be loaded: {e}")
+                sys.exit(1)
+
+            if checkpoint.shape != result.values.shape:
+                logger.fatal(
+                    f"The checkpointed volume does not have the same shape as the current volume. Current volume is {str(result.values.shape)} and checkpointed volume  is {str(checkpoint.shape)}"
+                )
+                sys.exit(1)
+
+            result.values = checkpoint
+            # Delete the checkpoint as we no longer use it and this takes quite a
+            # bit of memory
+            del checkpoint
+
+        self.events = events
+        for iter in range(first_iter, last_iter + 1):
+            logger.info(f"Iteration {str(iter)}")
+            if iter == 0:
+                result.values = self.backward(
+                    torch.ones(len(events)), check_valid_events=True
+                )
+            else:
+                proj = self.forward(result.values, check_valid_events=False)
+                result.values = result.values * (
+                    self.backward(1 / proj, check_valid_events=False)
+                    / self.sensitivity.values
+                )
+            if self.tv is True:
+                for idx in range(self.n_energies):
+                    result.values[idx] = TV_dual_denoising(
+                        result.values[idx], self.sensitivity.values[idx], self.alpha_tv
+                    )
+
+            if iter % save_every == 0 or iter == last_iter:
+                torch.save(
+                    result.values,
+                    checkpoint_dir / f"{self.run_name}.iter.{str(iter)}.npy",
+                )
+        return result
+
+    def forward(
+        self, object, subset_idx=None, check_valid_events: bool = True
+    ) -> torch.Tensor:
+        # There is probably a faster implementation, but I am trying to keep it simple for illustration purposes
+        proj = []
+        for event in self.events:
+            try:
+                line = self.SM_line(event, check_valid_events)
+            except ValueError as e:
+                # Remove it from the list because we know we don't need to
+                # look at it anymore
+                continue
+            proj.append(torch.mul(line.values, object).sum())
+
+        return torch.stack(proj)
+
+    def backward(
+        self, y, subset_idx=None, check_valid_events: bool = True
+    ) -> torch.Tensor:
+        back_proj = torch.zeros_like(self.line.values)
+        to_delete = []
+        for idx, event in enumerate(self.events):
+            try:
+                line = self.SM_line(event, check_valid_events=check_valid_events)
+                # line.values = line.values
+            except ValueError as e:
+                logger.debug(f"Skipping event {event.id} REASON: {e}")
+                # Remove it from the list because we know we don't need to
+                # look at it anymore
+                to_delete.append(idx)
+                continue
+            back_proj += line.values * y[idx]
+        if len(to_delete) > 0:
+            self.events = np.delete(self.events, to_delete)
+            logger.warning(
+                f"Skipped {str(len(to_delete))} events when computing the system matrix"
+            )
+            self.n_skipped_events = len(to_delete)
+            # In MLEM, backproject the errors which are 1 / forward proj. the
+            # complete equation is sum_i t_ij * proj_i
+
+        return back_proj
+
     def SM_angular_thickness(
         self, event: Event, check_valid_events: bool = True
     ) -> Image:
