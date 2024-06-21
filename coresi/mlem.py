@@ -3,6 +3,7 @@ import sys
 from logging import getLogger
 from math import pi
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import torch
@@ -276,7 +277,7 @@ class LM_MLEM(object):
                     # verify if the cone intersect the voxel i.e. if we are at the
                     # first iteration
                     # This for the case of a first-iter different than 0.
-                    line = self.SM_line(iter - first_iter, event)
+                    line = self.SM_line(event, (iter - first_iter) == 0)
                 except ValueError as e:
                     logger.debug(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we know we don't need to
@@ -327,7 +328,9 @@ class LM_MLEM(object):
                 )
         return result
 
-    def SM_angular_thickness(self, iter: int, event: Event) -> Image:
+    def SM_angular_thickness(
+        self, event: Event, check_valid_events: bool = True
+    ) -> Image:
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
         rho_j = torch.sqrt(
@@ -355,7 +358,7 @@ class LM_MLEM(object):
         self.line.values[mask] = 0.0
 
         # If the cone does not intersect with the volume at all, discard the self.line
-        if iter == 0 and not torch.any(self.line.values):
+        if check_valid_events and not torch.any(self.line.values):
             raise ValueError(
                 f"The cone does not intersect the volume for event {event.id}"
             )
@@ -401,7 +404,9 @@ class LM_MLEM(object):
 
         return self.line
 
-    def SM_angular_thickness_spectral(self, iter: int, event: Event) -> Image:
+    def SM_angular_thickness_spectral(
+        self, event: Event, check_valid_events: bool = True
+    ) -> Image:
         """docstring for SM_parallel_thickness_spectral"""
         if event.energy_bin >= self.n_energies:
             logger.fatal(
@@ -446,7 +451,7 @@ class LM_MLEM(object):
                 / (self.energies[idx] * (self.energies[idx] - event.Ee))
             )
 
-            if iter == 0 and ((cos_beta < -1) or (cos_beta > 1)):
+            if check_valid_events and ((cos_beta < -1) or (cos_beta > 1)):
                 event.xsection[idx] = 0.0
                 continue
             # We take the sinus (optimized) of ddelta (angle from the voxels to the cone surface)
@@ -460,7 +465,7 @@ class LM_MLEM(object):
             self.line.values[idx][~mask_cone] = 0.0
             # If the cone does not intersect the volume for a given energy,
             # continue
-            if iter == 0 and torch.all(~mask_cone):
+            if check_valid_events and torch.all(~mask_cone):
                 event.xsection[idx] = 0.0
                 continue
 
@@ -723,14 +728,16 @@ class LM_MLEM(object):
 
             self.line.values[idx][mask_cone] = kbl_j * self.line.values[idx][mask_cone]
 
-        if iter == 0 and torch.all(event.xsection == 0.0):
+        if check_valid_events and torch.all(event.xsection == 0.0):
             raise ValueError(
                 f"The cone does not intersect the volume for event {event.id} for all tried energies"
             )
 
         return self.line
 
-    def SM_angular_thickness_spectral_precise(self, iter: int, event: Event) -> Image:
+    def SM_angular_thickness_spectral_precise(
+        self, event: Event, check_valid_events: bool = True
+    ) -> Image:
         if event.energy_bin >= self.n_energies:
             logger.fatal(
                 f"The energy bin has not been determinted correctly for event {str(event.id)}"
@@ -775,7 +782,7 @@ class LM_MLEM(object):
                 / (self.energies[idx] * (self.energies[idx] - event.Ee))
             )
 
-            if iter == 0 and ((cos_beta < -1) or (cos_beta > 1)):
+            if check_valid_events and ((cos_beta < -1) or (cos_beta > 1)):
                 event.xsection[idx] = 0.0
                 continue
 
@@ -788,7 +795,7 @@ class LM_MLEM(object):
             self.line.values[idx][~mask_cone] = 0.0
             # If the cone does not intersect the volume for a given energy,
             # continue
-            if iter == 0 and torch.all(~mask_cone):
+            if check_valid_events and torch.all(~mask_cone):
                 event.xsection[idx] = 0.0
                 continue
 
@@ -1038,14 +1045,16 @@ class LM_MLEM(object):
                 prob_interactions * self.line.values[idx][mask_cone]
             )
 
-        if iter == 0 and torch.all(event.xsection == 0.0):
+        if check_valid_events and torch.all(event.xsection == 0.0):
             raise ValueError(
                 f"The cone does not intersect the volume for event {event.id} for all tried energies"
             )
 
         return self.line
 
-    def SM_parallel_thickness(self, iter: int, event: Event) -> Image:
+    def SM_parallel_thickness(
+        self, event: Event, check_valid_events: bool = True
+    ) -> Image:
         """docstring for SM_parallel_thickness"""
         # rho_j is a vector with distances from the voxel to the cone origin
         # It's normalized
@@ -1077,7 +1086,7 @@ class LM_MLEM(object):
         self.line.values[mask] = 0.0
 
         # If the cone does not intersect with the voxel at all, discard the self.line
-        if iter == 0 and not torch.any(self.line.values):
+        if check_valid_events and not torch.any(self.line.values):
             raise ValueError(
                 f"The cone does not intersect the voxel for event {event.id}"
             )
@@ -1117,7 +1126,9 @@ class LM_MLEM(object):
         self.line.values[mask] = KN * self.line.values[mask]
         return self.line
 
-    def SM_parallel_thickness_spectral(self, iter: int, event: Event) -> Image:
+    def SM_parallel_thickness_spectral(
+        self, event: Event, check_valid_events: bool = True
+    ) -> Image:
         """docstring for SM_parallel_thickness_spectral"""
         if event.energy_bin >= self.n_energies:
             logger.fatal(
@@ -1163,7 +1174,7 @@ class LM_MLEM(object):
                 / (self.energies[idx] * (self.energies[idx] - event.Ee))
             )
 
-            if iter == 0 and ((cos_beta < -1) or (cos_beta > 1)):
+            if check_valid_events and ((cos_beta < -1) or (cos_beta > 1)):
                 event.xsection[idx] = 0.0
                 continue
             sin_beta = torch.sqrt(1 - torch.pow(cos_beta, 2))
@@ -1178,7 +1189,7 @@ class LM_MLEM(object):
             self.line.values[idx][~mask_cone] = 0.0
             # If the cone does not intersect the volume for a given energy,
             # continue
-            if iter == 0 and torch.all(~mask_cone):
+            if check_valid_events and torch.all(~mask_cone):
                 event.xsection[idx] = 0.0
                 continue
 
@@ -1435,7 +1446,7 @@ class LM_MLEM(object):
                 )
             )
 
-        if iter == 0 and torch.all(event.xsection == 0.0):
+        if check_valid_events and torch.all(event.xsection == 0.0):
             raise ValueError(
                 f"The cone does not intersect the volume for event {event.id} for all tried energies"
             )
@@ -1499,7 +1510,7 @@ class LM_MLEM(object):
         energies: list,
         volume_config: dict,
         cameras: list[Camera],
-        SM_line: callable,
+        SM_line: Callable[[Event, bool], Image],
         config_mlem: dict,
         checkpoint_dir: Path,
     ) -> torch.Tensor:

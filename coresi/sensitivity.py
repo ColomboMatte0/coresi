@@ -143,7 +143,7 @@ def lyon_4D(
     y: torch.Tensor,
     z: torch.Tensor,
     energies: list[float],
-    SM_line: Callable[[int, Event], Image],
+    SM_line: Callable[[Event, bool], Image],
     mc_samples: int = 1,
 ):
     """Compute a system matrix by computing the probability of a random gammas
@@ -179,7 +179,7 @@ def lyon_4D(
                     logger.debug(f"Skipping event {line.strip()} REASON: {e}")
                     continue
                 try:
-                    result = SM_line(0, event).values
+                    result = SM_line(event, True).values
                     # Because we want a sensitivity for a given energy, ensure
                     # that the SM line for the given energy is non-zero
                     if result[idx_energy].any():
