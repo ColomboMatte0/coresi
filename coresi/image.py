@@ -107,7 +107,7 @@ class Image:
         ax.set_title("First slice of the Z axis view" + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
-        # plt.show()
+        plt.show()
 
     def save_all(
         self,
