@@ -91,18 +91,18 @@ class LM_MLEM(object):
         self.config_volume = config_volume
         self.line = Image(self.n_energies, self.config_volume)
 
-        if config_mlem["cone_thickness"] == "parallel":
+        if self.cone_thickness == "parallel":
             self.sigma_beta = (
                 self.line.voxel_size.norm2() * config_mlem["width_factor"] / 2
             )
             # Skip the Gaussian above n_sigma * Gaussian std
             self.limit_sigma = self.sigma_beta * config_mlem["n_sigma"]
-            if self.n_energies > 1:
+            if self.n_energies > 1 or config_mlem["force_spectral"]:
                 # Alias to avoid selecting the right algorithm in the run loop
                 self.SM_line = self.SM_parallel_thickness_spectral
             else:
                 self.SM_line = self.SM_parallel_thickness
-        elif config_mlem["cone_thickness"] in ["angular", "angular_precise"]:
+        elif self.cone_thickness in ["angular", "angular_precise"]:
             # TODO: If E0 is unknown, we need to interpolate the values for each
             # event based on the known constants
             # TODO: What we don't have the constants for a given energy?
@@ -173,7 +173,7 @@ class LM_MLEM(object):
                     * config_mlem["n_sigma"]
                     for idx in range(len(self.sigma_beta_1))
                 ]
-            if self.n_energies == 1:
+            if self.n_energies == 1 and not config_mlem["force_spectral"]:
                 # If only one energy, tranform the array into a single value
                 self.a1 = self.a1[0]
                 self.a2 = self.a2[0]
@@ -183,9 +183,9 @@ class LM_MLEM(object):
                     max([self.sigma_beta_1, self.sigma_beta_2]) * config_mlem["n_sigma"]
                 )
                 self.SM_line = self.SM_angular_thickness
-            elif config_mlem["cone_thickness"] == "angular":
+            elif self.cone_thickness == "angular":
                 self.SM_line = self.SM_angular_thickness_spectral
-            elif config_mlem["cone_thickness"] == "angular_precise":
+            elif self.cone_thickness == "angular_precise":
                 self.SM_line = self.SM_angular_thickness_spectral_precise
 
         logger.info(f"Using algorithm {self.SM_line.__name__}")

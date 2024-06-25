@@ -92,6 +92,8 @@ lm_mlem:
   first_iter: 0
   save_every: 76
   checkpoint_dir: checkpoints
+  # force sperctral algorithm even if there is only one energy
+  force_spectral: false
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
   width_factor: 1 # Used to artificially modify the spread of the cone
   sensitivity: true
