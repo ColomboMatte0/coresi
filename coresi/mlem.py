@@ -14,6 +14,7 @@ from coresi.camera import Camera, DetectorType
 from coresi.event import Event
 from coresi.image import Image
 from coresi.tv import TV_dual_denoising
+from coresi.interpolation import torch_1d_interp
 
 logger = getLogger("CORESI")
 _ = torch.set_grad_enabled(False)
@@ -124,48 +125,71 @@ class LM_MLEM(object):
                 else:
                     # interpolate
                     # TODO: sort values according to the right key
-                    known_energies = [
-                        int(key.split("_")[1])
-                        for key in constants["doppler_broadening"].keys()
-                    ]
+                    known_energies = torch.tensor(
+                        [
+                            int(key.split("_")[1])
+                            for key in constants["doppler_broadening"].keys()
+                        ],
+                        device=self.device,
+                    )
                     self.a1.append(
-                        np.interp(
+                        torch_1d_interp(
                             energy,
                             known_energies,
-                            [
-                                value["a1"]
-                                for value in constants["doppler_broadening"].values()
-                            ],
+                            torch.tensor(
+                                [
+                                    value["a1"]
+                                    for value in constants[
+                                        "doppler_broadening"
+                                    ].values()
+                                ],
+                                device=self.device,
+                            ),
                         )
                     )
                     self.a2.append(
-                        np.interp(
+                        torch_1d_interp(
                             energy,
                             known_energies,
-                            [
-                                value["a2"]
-                                for value in constants["doppler_broadening"].values()
-                            ],
+                            torch.tensor(
+                                [
+                                    value["a2"]
+                                    for value in constants[
+                                        "doppler_broadening"
+                                    ].values()
+                                ],
+                                device=self.device,
+                            ),
                         )
                     )
                     self.sigma_beta_1.append(
-                        np.interp(
+                        torch_1d_interp(
                             energy,
                             known_energies,
-                            [
-                                value["sigma_beta_1"]
-                                for value in constants["doppler_broadening"].values()
-                            ],
+                            torch.tensor(
+                                [
+                                    value["sigma_beta_1"]
+                                    for value in constants[
+                                        "doppler_broadening"
+                                    ].values()
+                                ],
+                                device=self.device,
+                            ),
                         )
                     )
                     self.sigma_beta_2.append(
-                        np.interp(
+                        torch_1d_interp(
                             energy,
                             known_energies,
-                            [
-                                value["sigma_beta_2"]
-                                for value in constants["doppler_broadening"].values()
-                            ],
+                            torch.tensor(
+                                [
+                                    value["sigma_beta_2"]
+                                    for value in constants[
+                                        "doppler_broadening"
+                                    ].values()
+                                ],
+                                device=self.device,
+                            ),
                         )
                     )
                 self.limit_sigma = [
