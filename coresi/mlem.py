@@ -461,6 +461,10 @@ class LM_MLEM(object):
             + event.axis.y * (self.yy - event.V1.y)
             + event.axis.z * (self.zz - event.V1.z)
         ) / rho_j
+        # Because of floating point arithmetics, the cosinus could outside the
+        # -1,1 range. Clamp the values to workaround that.
+        cos_delta_j = torch.clamp(cos_delta_j, min=-1.0, max=1.0)
+
         # ddelta is the angle from the voxels to the cone surface
         self.line.values = torch.abs(torch.arccos(cos_delta_j) - event.beta)
 
@@ -553,6 +557,10 @@ class LM_MLEM(object):
             + event.axis.y * (self.yy - event.V1.y)
             + event.axis.z * (self.zz - event.V1.z)
         ) / rho_j
+
+        # Because of floating point arithmetics, the cosinus could outside the
+        # -1,1 range. Clamp the values to workaround that.
+        cos_delta_j = torch.clamp(cos_delta_j, min=-1.0, max=1.0)
 
         # Geometry
         for idx in torch.where(event.xsection > 0.0)[0]:
@@ -883,6 +891,10 @@ class LM_MLEM(object):
             + event.axis.z * (self.zz - event.V1.z)
         ) / rho_j
 
+        # Because of floating point arithmetics, the cosinus could outside the
+        # -1,1 range. Clamp the values to workaround that.
+        cos_delta_j = torch.clamp(cos_delta_j, min=-1.0, max=1.0)
+
         x_section_m_e = camera.get_photo_diff_xsection(self.m_e, DetectorType.ABS)
 
         # Geometry
@@ -1185,6 +1197,9 @@ class LM_MLEM(object):
             + event.axis.y * (self.yy - event.V1.y)
             + event.axis.z * (self.zz - event.V1.z)
         ) / rho_j
+        # Because of floating point arithmetics, the cosinus could outside the
+        # -1,1 range. Clamp the values to workaround that.
+        cos_delta_j = torch.clamp(cos_delta_j, min=-1.0, max=1.0)
 
         # We take the sinus (optimized) of ddelta (angle from the voxels to the cone surface)
         # and multiply by rhoj to get the distance from
@@ -1276,6 +1291,9 @@ class LM_MLEM(object):
             + event.axis.y * (self.yy - event.V1.y)
             + event.axis.z * (self.zz - event.V1.z)
         ) / rho_j
+        # Because of floating point arithmetics, the cosinus could outside the
+        # -1,1 range. Clamp the values to workaround that.
+        cos_delta_j = torch.clamp(cos_delta_j, min=-1.0, max=1.0)
 
         # Geometry
         for idx in torch.where(event.xsection > 0.0)[0]:
