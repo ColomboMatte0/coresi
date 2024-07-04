@@ -1651,7 +1651,7 @@ class LM_MLEM(object):
         y_steps: int,
         z_range: tuple,
         z_steps: int,
-    ) -> [torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Sample points along each volume dimension. use voxel size to center
         # the points on the voxels
         return (
