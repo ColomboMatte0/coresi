@@ -1632,7 +1632,9 @@ class LM_MLEM(object):
 
             # If the file was saved with torch.save
             elif torch.cuda.is_available():
-                self.sensitivity.values = torch.load(config_mlem["sensitivity_file"])
+                self.sensitivity.values = torch.load(
+                    config_mlem["sensitivity_file"]
+                ).to(self.device)
             # If the sensitivity was computed from GPU but no GPU is available
             else:
                 self.sensitivity.values = torch.load(
