@@ -183,7 +183,9 @@ def lyon_4D(
                     # Because we want a sensitivity for a given energy, ensure
                     # that the SM line for the given energy is non-zero
                     if result[idx_energy].any():
-                        sensitivity_vol.values = sensitivity_vol.values + result
+                        sensitivity_vol.values[idx_energy] = (
+                            sensitivity_vol.values[idx_energy] + result[idx_energy]
+                        )
                     else:
                         raise ValueError(f"Got zeros for energy {energy} keV")
                 except ValueError as e:
