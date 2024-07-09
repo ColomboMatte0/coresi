@@ -103,3 +103,4 @@ lm_mlem:
   # sensitivity_file: /home/lequertier/projects/coresi_git/CodeC++/IECPhantomSens_7sca_50voxXY_1voxZ_4nE_140_245_364_511_keV_ValenciaModel_Eslice_0.raw
   tv: true
   alpha_tv: 0.1
+  mc_samples: 1
