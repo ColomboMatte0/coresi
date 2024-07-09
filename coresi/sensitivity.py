@@ -156,9 +156,9 @@ def lyon_4D(
             valid_events = 0
             while valid_events < mc_samples:
                 sca = random.choice(camera.sca_layers)
-                abs = random.choice(camera.abs_layers)
+                absorber = random.choice(camera.abs_layers)
                 x1 = generate_random_point(sca.dim, sca.center, 1)[0]
-                x2 = generate_random_point(abs.dim, abs.center, 1)[0]
+                x2 = generate_random_point(absorber.dim, absorber.center, 1)[0]
                 beta = generate_random_angle(cdf_compton, angles, idx_energy)
                 E_gamma = energy / (1 + (energy / 511.0) * (1 - torch.cos(beta)))
                 # The Event class does the conversion to centimeters
