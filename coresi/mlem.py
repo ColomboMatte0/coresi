@@ -1719,9 +1719,6 @@ class LM_MLEM(object):
             sensitivity.values = sensitivity_models.lyon_4D(
                 cameras,
                 volume_config,
-                x,
-                y,
-                z,
                 energies,
                 SM_line,
                 mc_samples=config_mlem["mc_samples"],

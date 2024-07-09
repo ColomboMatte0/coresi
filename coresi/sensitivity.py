@@ -139,9 +139,6 @@ def attenuation_exp(
 def lyon_4D(
     cameras: list[Camera],
     volume_config: dict,
-    x: torch.Tensor,
-    y: torch.Tensor,
-    z: torch.Tensor,
     energies: list[float],
     SM_line: Callable[[Event, bool], Image],
     mc_samples: int = 1,
