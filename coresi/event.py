@@ -71,12 +71,12 @@ class Event(object):
             self.E0 = self.Ee + self.Eg
         else:
             self.E0 = self.source_E0[0]
-        if self.is_hit_in_volume(self.V1):
+        if self.volume_intersects_camera(self.V1):
             logger.fatal(
                 f"The volume intersects the camera for first hit, check whether the camera configuration matches GATE's, and the volume dimension and position. Event: {line}"
             )
             sys.exit(1)
-        if self.is_hit_in_volume(self.V2):
+        if self.volume_intersects_camera(self.V2):
             logger.fatal(
                 f"The volume intersects the camera for second hit, check whether the camera configuration matches GATE's, and the volume dimension and position. Event: {line}"
             )
@@ -152,7 +152,7 @@ class Event(object):
         if not found:
             raise (ValueError("V2 does not belong in a known camera"))
 
-    def is_hit_in_volume(self, V: Point) -> bool:
+    def volume_intersects_camera(self, V: Point) -> bool:
         return (
             abs(V.x - self.volume_center.x) <= self.volume_dim.x / 2
             and abs(V.y - self.volume_center.y) <= self.volume_dim.y / 2
