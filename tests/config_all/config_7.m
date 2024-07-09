@@ -65,7 +65,7 @@ ALGORITHM = 7;          % 0=CV, 1=CV_eu (energy uncertainty, sigma on angle),
 			% 7=spectral discrete in 4D, 8==spectral discrete in 4D with EU 9=spectral continuous in 4D
                         % -1=RTS, -2=RTV (not implemented)
 
-SENSITIVITY_MODEL = 'block'; 
+SENSITIVITY_MODEL = 'sensitivity_with_attenuation_exp'; 
 MODEL = 'cos1rho2';       % cos0rho0 que le K et la gaussienne,
                           % cos1rho1 cos/rho, cos1rho2 cos/rho^2, cos0rho2
                           % 1/rho^2

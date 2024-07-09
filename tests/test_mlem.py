@@ -102,13 +102,13 @@ class MLEM(unittest.TestCase):
     def test_compare_cpp(self):
         events = read_data_file(
             config["data_file"],
-            n_events=1,
+            n_events=config["n_events"],
             E0=config["E0"],
             cameras=cameras,
             energy_range=config["energy_range"],
             volume_config=config["volume"],
             remove_out_of_range_energies=config["remove_out_of_range_energies"],
-            start_position=0,
+            start_position=config["starts_at"],
         )
         mlem = LM_MLEM(
             config["lm_mlem"],
@@ -151,6 +151,7 @@ class MLEM(unittest.TestCase):
                 ]
             )
 
+            print(list(glob(str(tmpdirname / "*.bin"))))
             # Sort the CORESI iterations by the iteration number and return the
             # last one
             regex = re.compile(config_path + ".sample0.iter(\d+).bin")
@@ -168,14 +169,15 @@ class MLEM(unittest.TestCase):
                 .transpose(-4, -2, -3, -1)
             )
 
-            # for energy in range(len(config["E0"])):
-            #    result.display_z(
-            #        energy=energy, title=" energy " + str(config["E0"][energy])
-            #    )
-            #    result_mlem.display_z(
-            #        energy=energy, title=" energy " + str(config["E0"][energy]) + " c++"
-            #    )
-            #    plt.show()
+            for energy in range(len(config["E0"])):
+                result.display_z(
+                    energy=energy, title=" energy " + str(config["E0"][energy])
+                )
+                result_mlem.display_z(
+                    energy=energy,
+                    title=" energy " + str(config["E0"][energy]) + " c++",
+                )
+                plt.show()
 
             # Load CORESI results and compare with Python
             np.testing.assert_allclose(

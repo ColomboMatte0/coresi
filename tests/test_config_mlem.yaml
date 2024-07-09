@@ -1,8 +1,10 @@
 data_file: tests/test_mlem.dat
 data_type: 'MACACO'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
-E0: [140, 245, 364, 511]
-#E0: [140]
+#E0: [140, 245, 364, 511]
+n_events: 1
+starts_at: 0
+E0: [140]
 remove_out_of_range_energies: False
 # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
 # otherwise
@@ -12,6 +14,8 @@ energy_range: [120, 150]
 # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
 # des détecteurs)
 energy_threshold: 5
+
+log_dir: ../logs
 
 # Supply a sensitivity file. Needs to have the same size as the number of
 # voxels in the volume
@@ -80,6 +84,6 @@ lm_mlem:
   width_factor: 1 # Used to artificially modify the spread of the cone
   checkpoint_dir: checkpoints
   save_every: 76
-  sensitivity: true
-  sensitivity_model: solid_angle # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+  sensitivity: false
+  sensitivity_model: like_system_matrix # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
   sensitivity_point_samples: 1 # Used to compute the sensitivity for a coarser volume with less voxels. Set to 1 o disable

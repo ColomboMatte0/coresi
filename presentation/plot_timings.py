@@ -7,7 +7,8 @@ with open("timings.json", "r") as fh:
     timings = json.load(fh)
 
 fig, ax = plt.subplots(figsize=(15, 10))
-x, y = zip(*sorted(timings.items()))
+x, y = zip(*sorted(timings.items(), key=lambda timing: int(timing[0])))
+print(x)
 cpp = np.array([item["cpp"] for item in y])
 cpu = np.array([item["cpu"] for item in y])
 gpu = np.array([item["gpu"] for item in y])
@@ -27,7 +28,7 @@ ax.set_ylabel("time (seconds)")
 ax.set_xlabel("Number of events")
 ax.set_xticklabels(x)
 ax.set_title(
-    "Comparison of CORESI C++, Coresi Python CPU and GPU for 6 iterations and 100x100x100 voxels"
+    "Comparison of CORESI C++, Coresi Python CPU and GPU for 4 iterations and 500x500x1 volume"
 )
 ax.grid(axis="y", linestyle="dashed", linewidth=0.5)
 

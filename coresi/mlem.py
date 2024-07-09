@@ -1712,10 +1712,7 @@ class LM_MLEM(object):
             if len(energies) > 1:
                 # With this model the sensitivity is the same for all energies
                 sensitivity.values = sensitivity.values.repeat(len(energies), 1, 1, 1)
-        elif (
-            config_mlem["sensitivity"]
-            and config_mlem["sensitivity_model"] == "like_system_matrix"
-        ):
+        elif config_mlem["sensitivity_model"] == "like_system_matrix":
             logger.info(
                 f"Computing sensitivity values with a Monte Carlo simulation and {SM_line.__name__}"
             )
