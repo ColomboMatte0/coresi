@@ -190,11 +190,9 @@ def lyon_4D(
                     continue
                 valid_events += 1
 
-    # Normaliza the sensitivity
-    for idx in range(len(energies)):
-        sensitivity_vol.values[idx] = (
-            sensitivity_vol.values[idx] / sensitivity_vol.values[idx].sum()
-        )
+    # We only do the sum here rather than the average because it's unlikely we
+    # get high values as the chance the cone goes perfectly through the
+    # voxel is low
     return sensitivity_vol.values
 
 
