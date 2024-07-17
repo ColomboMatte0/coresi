@@ -1694,11 +1694,17 @@ class LM_MLEM(object):
                 mc_samples=config_mlem["mc_samples"],
             )
 
+        sens_filename = (
+            config_mlem["cone_thickness"]
+            + (
+                "_MC"
+                if config_mlem["sensitivity_model"] == "like_system_matrix"
+                else "_geo"
+            )
+            + "_sensitivity.pth"
+        )
         logger.info(
-            f"Sensitivity done, saving to {str(checkpoint_dir / 'sensitivity.pth')}"
+            f"Sensitivity done, saving to {str(checkpoint_dir / sens_filename)}"
         )
-        torch.save(
-            sensitivity.values.cpu(),
-            checkpoint_dir / "sensitivity.pth",
-        )
+        torch.save(sensitivity.values.cpu(), checkpoint_dir / sens_filename)
         return sensitivity.values
