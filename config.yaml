@@ -75,8 +75,8 @@ volume:
 
 lm_mlem:
   cone_thickness: 'parallel' # angular or parallel
-  model: 'cos1rho2'
   last_iter: 0
+  model: 'cos0rho0' # Either cos0rho0, cos0rho2 or cos1rho2. Use cos0rho0 if sensitivity is disabled.
   first_iter: 0
   save_every: 76
   checkpoint_dir: checkpoints
