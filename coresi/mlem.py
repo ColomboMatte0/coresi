@@ -808,21 +808,6 @@ class LM_MLEM(object):
                 )
                 * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
                 / 2
-            ) * torch.exp(
-                -(
-                    camera.get_total_diff_xsection(
-                        self.energies[idx] - event.Ee, event.detector_type_V2
-                    )
-                    * (camera.sca_layers + camera.abs_layers)[
-                        event.layer_idx_V2
-                    ].thickness
-                    / 2
-                    * (
-                        camera.sca_density
-                        if event.detector_type_V2 == DetectorType.SCA
-                        else camera.abs_density
-                    )
-                )
             )
             # Attenuation in planes not triggered
             # Before scatterer
@@ -1524,21 +1509,6 @@ class LM_MLEM(object):
                 )
                 * (camera.sca_layers + camera.abs_layers)[event.layer_idx_V1].thickness
                 / 2
-            ) * torch.exp(
-                -(
-                    camera.get_total_diff_xsection(
-                        self.energies[idx] - event.Ee, event.detector_type_V2
-                    )
-                    * (camera.sca_layers + camera.abs_layers)[
-                        event.layer_idx_V2
-                    ].thickness
-                    / 2
-                    * (
-                        camera.sca_density
-                        if event.detector_type_V2 == DetectorType.SCA
-                        else camera.abs_density
-                    )
-                )
             )
             # Attenuation in planes not triggered
             # Before scatterer
