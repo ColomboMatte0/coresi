@@ -65,7 +65,7 @@ class Image:
             ],
         )
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
-        ax.set_title("First slice of the X axis view")
+        ax.set_title(f"slice {str(slice)} of the x axis view " + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
         plt.show()
@@ -83,7 +83,7 @@ class Image:
             ],
         )
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
-        ax.set_title("First slice of the Y axis view")
+        ax.set_title(f"slice {str(slice)} of the Y axis view " + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
         plt.show()
@@ -104,7 +104,7 @@ class Image:
         )
         cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
         # ax.add_patch(Circle((point[0], point[1]), radius=0.1, color="red"))
-        ax.set_title("First slice of the Z axis view" + title)
+        ax.set_title(f"slice {str(slice)}  of the z axis view " + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
         plt.show()
