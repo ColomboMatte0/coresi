@@ -1,6 +1,6 @@
+import sys
 from logging import getLogger
 from math import sqrt
-import sys
 
 import torch
 
