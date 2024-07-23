@@ -4,6 +4,7 @@ from logging import getLogger
 from pathlib import Path
 from typing import Callable
 
+import json
 import numpy as np
 import torch
 
@@ -33,6 +34,7 @@ class LM_MLEM(object):
         self.cone_thickness = config_mlem["cone_thickness"]
         self.tv = config_mlem["tv"]
         self.alpha_tv = config_mlem["alpha_tv"]
+        logger.info(f"MLEM config: {json.dumps(config_mlem)}")
 
         self.n_skipped_events = 0
         self.run_name = run_name
