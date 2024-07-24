@@ -20,7 +20,7 @@ for image_name in images:
     image = Image(len(config["E0"]), config["volume"])
     image.values = torch.load(image_name, map_location=torch.device("cpu"))
     volume = image.values
-    volume = volume / volume.sum()
+    volume = volume / volume.sum(dim=[1, 2, 3], keepdim=True)
     profile_h = volume[:, :, volume.shape[-2] // 2, volume.shape[-1] // 2]
     profile_v = volume[:, volume.shape[-3] // 2, volume.shape[-2] // 2, :]
     if "poly" in image_name:
@@ -46,16 +46,6 @@ for image_name in images:
                 profile_v[e],
                 label=f"{config['E0'][e]} keV",
             )
-            # axs[1].set_xticks(list(range(0, profile_v.shape[-1], 5)))
-            # axs[1].set_xticklabels(
-            #    list(
-            #        range(
-            #            (-config["volume"]["volume_dimensions"][1] // 2) + 1,
-            #            config["volume"]["volume_dimensions"][1] // 2 + 1,
-            #            5,
-            #        )
-            #    )
-            # )
     else:
         axs[0].plot(
             torch.linspace(
@@ -75,13 +65,9 @@ for image_name in images:
             profile_v[0],
             label=image_name.split(".")[0].replace("_", " "),
         )
-        # axs[0].plot(profile_h[0])
-
-        # axs[1].plot(profile_v[0])
 
 
 for ax in axs.ravel():
-    # ax.set_yscale("log")
     ax.legend(loc="upper right")
 plt.savefig("1d_profile_" + images[0] + ".png", dpi=300)
 plt.show()
