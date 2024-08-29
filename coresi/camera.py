@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import yaml
 
+from coresi.interpolation import torch_1d_interp
 from coresi.point import Point
 
 _ = torch.set_grad_enabled(False)
@@ -303,3 +304,9 @@ class Layer(object):
 
     def __str__(self) -> str:
         return f"center: {self.center}, dim: {self.dim}"
+
+
+def generate_random_angle(cdf_KN: torch.Tensor, angles: torch.Tensor, energy_idx: int):
+    """docstring for generate_random_angle"""
+    x = torch.distributions.uniform.Uniform(0, 1).sample((1,))
+    return torch_1d_interp(x[0], cdf_KN[energy_idx], angles)

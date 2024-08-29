@@ -12,6 +12,7 @@ import yaml
 from coresi.camera import setup_cameras
 from coresi.data import read_data_file
 from coresi.mlem import LM_MLEM
+from coresi.simulation import simulate
 
 parser = argparse.ArgumentParser(description="CORESI")
 
@@ -33,6 +34,11 @@ parser.add_argument(
     "--sensitivity",
     action="store_true",
     help="Compute the sensitivity and quits",
+)
+parser.add_argument(
+    "--simulation",
+    action="store_true",
+    help="Do a simulation and quit",
 )
 parser.add_argument(
     "--display",
@@ -79,6 +85,21 @@ checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
 def run():
     start = time.time()
+    if args.simulation:
+        lines = simulate(
+            config["simulation"]["phantom"],
+            config,
+            cameras,
+            config["simulation"]["n_events"],
+            config["E0"][0],
+            visualize_generated_source=config["simulation"][
+                "visualize_generated_source"
+            ],
+            angle_threshold=config["simulation"]["angle_threshold"],
+        )
+        with open(config["simulation"]["output_file"], "w") as fh:
+            fh.write(lines)
+        sys.exit(0)
     if args.sensitivity:
         mlem = LM_MLEM(
             config["lm_mlem"],

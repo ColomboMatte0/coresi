@@ -4,11 +4,11 @@ from typing import Callable
 
 import torch
 
-from coresi.camera import Camera
+from coresi.camera import Camera, generate_random_angle
 from coresi.event import Event
 from coresi.image import Image
-from coresi.interpolation import torch_1d_interp
 from coresi.point import Point
+from coresi.utils import generate_random_point
 
 _ = torch.set_grad_enabled(False)
 
@@ -63,11 +63,6 @@ def block(
 def attenuation_exp(
     cameras: list[Camera],
     volume_config: dict,
-    x: torch.Tensor,
-    y: torch.Tensor,
-    z: torch.Tensor,
-    # TODO: hard coded in C++, does that correspond to Silicium attenuation?
-    mu=0.2038,
 ):
     sensitivity_vol = Image(1, volume_config)
     cameras = [cameras[0]]
@@ -194,21 +189,3 @@ def lyon_4D(
     # get high values as the chance the cone goes perfectly through the
     # voxel is low
     return sensitivity_vol.values
-
-
-def generate_random_angle(cdf_KN: torch.Tensor, angles: torch.Tensor, energy_idx: int):
-    """docstring for generate_random_angle"""
-    x = torch.distributions.uniform.Uniform(0, 1).sample((1,))
-    return torch_1d_interp(x[0], cdf_KN[energy_idx], angles)
-
-
-def generate_random_point(dim: Point, center: Point, n_points: int) -> torch.Tensor:
-    """Generate random points in a volume"""
-    return torch.distributions.uniform.Uniform(
-        torch.tensor(
-            [center.x - dim.x / 2, center.y - dim.y / 2, center.z - dim.z / 2]
-        ),
-        torch.tensor(
-            [center.x + dim.x / 2, center.y + dim.y / 2, center.z + dim.z / 2]
-        ),
-    ).sample((n_points,))

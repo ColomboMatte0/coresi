@@ -73,6 +73,14 @@ volume:
   volume_dimensions: [20,20,0.4] # In centimeters
   volume_centre: [0, 0, 0]
 
+simulation:
+  #n_events: 20000
+  n_events: 1
+  phantom: phantom.pth
+  output_file: simulation.raw
+  visualize_generated_source: True
+  angle_threshold: 5 # In degrees. It's hard to compute the exact x2 (second hit in the absorber) that corresponds to the randomly chosen angle. So draw candidates and pick one that loosely match the angle according to this threshold
+
 lm_mlem:
   cone_thickness: 'parallel' # angular or parallel
   last_iter: 0
