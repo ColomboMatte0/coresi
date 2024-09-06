@@ -1,13 +1,11 @@
 import random
 from logging import getLogger
 
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import yaml
 
-from coresi.camera import Camera, generate_random_angle, setup_cameras
+from coresi.camera import Camera, generate_random_angle
 from coresi.image import Image
 from coresi.utils import generate_random_point, generate_weighted_random_point
 
@@ -39,6 +37,7 @@ def simulate(
     angles = torch.arange(0, 181, 1).deg2rad()
     points = []
     slice = []
+    betas = []
     logger.info(f"Doing a simulation for {str(n_events)} events")
     while n_valid_forged_events < n_events:
         n_forged_events += 1
@@ -72,6 +71,7 @@ def simulate(
             n_valid_forged_events += 1
             points.append(x0)
             slice.append(k)
+            betas.append(beta.rad2deg())
             x2 = best_try[1]
             # Gate output use to be in mm. Moreover, the Event class expects mm
             # and does the conversion, so multiply by 10 to account for that
@@ -82,6 +82,7 @@ def simulate(
             simulated_events.append(line)
     if visualize_generated_source:
         visualize_source_points(points, slice, source)
+    torch.save(betas, "betas.pth")
     logger.info("Simulation done")
     logger.debug(
         f"x2 success rate = {str(n_valid_forged_events * 100 / n_forged_events)}%"
@@ -91,8 +92,11 @@ def simulate(
 
 def visualize_source_points(points, slice, source):
     points = torch.tensor(np.array(points))
+    torch.save(points, "points.pth")
     slice = torch.tensor(slice)
-    for z in range(source.dim_in_voxels[-1]):
+    torch.save(slice, "slice.pth")
+    # for z in range(source.dim_in_voxels[-1]):
+    for z in range(0, 1):
         mask = torch.isin(slice, z)
         points_z = points[mask]
 
@@ -121,6 +125,3 @@ def visualize_source_points(points, slice, source):
         )
         source.display_z(ax=axs[1], fig=fig, slice=z)
         plt.show()
-
-
-
