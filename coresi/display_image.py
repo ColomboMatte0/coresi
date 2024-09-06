@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description="CORESI")
 repo = git.Repo(search_parent_directories=True)
 commit = repo.git.rev_parse("HEAD", short=True)
 
-parser.add_argument("-i", "--image", type=Path, required=True)
+parser.add_argument("-f", "--file", type=Path, required=True, help="File path to the volume to display")
 parser.add_argument(
     "-c",
     "--config",
@@ -29,10 +29,10 @@ parser.add_argument(
     type=int,
 )
 parser.add_argument(
-    "-p",
-    "--projection",
+    "-a",
+    "--axis",
     default="z",
-    help="Projection x, y or z",
+    help="Axis x, y or z",
     type=str,
 )
 parser.add_argument(
@@ -52,27 +52,27 @@ def display():
 
     if args.cpp:
         image.values = torch.from_numpy(
-            np.fromfile(args.image)
+            np.fromfile(args.file)
             .reshape(image.values.shape)
             .transpose(-4, -2, -3, -1)
         )
     else:
-        image.values = torch.load(args.image, map_location=torch.device("cpu"))
+        image.values = torch.load(args.file, map_location=torch.device("cpu"))
 
     for e in range(image.values.shape[0]):
-        if args.projection == "z":
+        if args.axis == "z":
             image.display_z(
                 energy=e,
                 title=f" {str(config['E0'][e])} keV" + (" CPP" if args.cpp else ""),
                 slice=args.slice,
             )
-        if args.projection == "x":
+        if args.axis == "x":
             image.display_x(
                 energy=e,
                 title=f" {str(config['E0'][e])} keV" + (" CPP" if args.cpp else ""),
                 slice=args.slice,
             )
-        if args.projection == "y":
+        if args.axis == "y":
             image.display_y(
                 energy=e,
                 title=f" {str(config['E0'][e])} keV" + (" CPP" if args.cpp else ""),
