@@ -8,11 +8,13 @@ import yaml
 
 from coresi.image import Image
 
-parser = argparse.ArgumentParser(description="CORESI")
+parser = argparse.ArgumentParser(description="CORESI - image display")
 repo = git.Repo(search_parent_directories=True)
 commit = repo.git.rev_parse("HEAD", short=True)
 
-parser.add_argument("-f", "--file", type=Path, required=True, help="File path to the volume to display")
+parser.add_argument(
+    "-f", "--file", type=Path, required=True, help="File path to the volume to display"
+)
 parser.add_argument(
     "-c",
     "--config",
