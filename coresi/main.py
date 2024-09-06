@@ -14,7 +14,9 @@ from coresi.data import read_data_file
 from coresi.mlem import LM_MLEM
 from coresi.simulation import simulate
 
-parser = argparse.ArgumentParser(description="CORESI")
+parser = argparse.ArgumentParser(
+    description="CORESI - Code for Compton camera image reconstruction (default action) "
+)
 
 
 parser.add_argument(
