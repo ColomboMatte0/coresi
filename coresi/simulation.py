@@ -26,7 +26,7 @@ def simulate(
     angle_threshold is in degrees
     """
     source = Image(0, config["volume"])
-    source.values = torch.load(source_filename)
+    source.values = torch.load(source_filename, weights_only=True)
     if source.values.shape[0] != 1:
         raise ValueError(
             "The source should be for one energy, expected dimensions are [1, W, H, D]"
@@ -73,7 +73,7 @@ def simulate(
             slice.append(k)
             betas.append(beta.rad2deg())
             x2 = best_try[1]
-            # Gate output use to be in mm. Moreover, the Event class expects mm
+            # Gate output used to be in mm. Moreover, the Event class expects mm
             # and does the conversion, so multiply by 10 to account for that
             x1 = x1 * 10
             x2 = x2 * 10
