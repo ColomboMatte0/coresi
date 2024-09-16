@@ -1,10 +1,8 @@
-#data_file: tests/test_mlem.dat
-data_file: /home/lequertier/DataPaperSpectral/ReconstructionFilesPaper/CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
+data_file: CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
 data_type: 'MACACO'
 log_dir: 'logs'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
 E0: [140, 245, 364, 511]
-#E0: [364]
 remove_out_of_range_energies: False
 # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
 # otherwise
@@ -83,10 +81,10 @@ simulation:
 
 lm_mlem:
   cone_thickness: 'parallel' # angular or parallel
-  last_iter: 0
+  last_iter: 9
   model: 'cos0rho0' # Either cos0rho0, cos0rho2 or cos1rho2. Use cos0rho0 if sensitivity is disabled.
   first_iter: 0
-  save_every: 76
+  save_every: 2
   checkpoint_dir: checkpoints
   # force sperctral algorithm even if there is only one energy
   force_spectral: false
@@ -101,4 +99,4 @@ lm_mlem:
   alpha_tv: 0.000
   # Supply a sensitivity file. Needs to have the same size as the number of
   # voxels in the volume
-  #sensitivity_file: /home/lequertier/coresi_python/checkpoints/sensitivity.pth
+  sensitivity_file: sensitivity.pth
