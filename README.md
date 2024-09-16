@@ -1,3 +1,13 @@
+# Installation
+
+To install as a system library and executable "coresi"
+
+```bash
+pip install .
+# or with the whell
+pip install dist/coresi-0.0.X-py3-none-any.whl
+```
+
 # Setup python environment
 
 ```bash
@@ -78,14 +88,3 @@ python3 -m build
 ```
 
 This creates an installable wheel in the `dist/` folder.
-
-# Installation
-
-To install as a system library and executable "coresi"
-
-```bash
-pip install .
-# or with the whell
-pip install dist/coresi-0.0.X-py3-none-any.whl
-```
-
