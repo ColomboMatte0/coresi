@@ -15,7 +15,8 @@ from coresi.mlem import LM_MLEM
 from coresi.simulation import simulate
 
 parser = argparse.ArgumentParser(
-    description="CORESI - Code for Compton camera image reconstruction (default action) "
+    description="CORESI - Code for Compton camera image reconstruction (default action)",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 
 
@@ -45,7 +46,7 @@ parser.add_argument(
 parser.add_argument(
     "--display",
     action="store_true",
-    help="Display the reconstructed image",
+    help="Display the reconstructed image after the reconstruction",
 )
 
 args = parser.parse_args()

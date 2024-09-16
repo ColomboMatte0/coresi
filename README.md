@@ -39,18 +39,18 @@ Supported flags:
 
 ```bash
 coresi --help
-usage: main.py [-h] [-v] [-c CONFIG] [--sensitivity]
+usage: main.py [-h] [-v] [-c CONFIG] [--sensitivity] [--simulation] [--display]
 
 CORESI - Code for Compton camera image reconstruction (default action)
 
 options:
   -h, --help            show this help message and exit
-  -v, --verbose         Enable debug output
+  -v, --verbose         Enable debug output (default: False)
   -c CONFIG, --config CONFIG
-                        Path to the configuration file
-  --sensitivity         Compute the sensitivity and quits
-  --simulation          Do a simulation and quit
-  --display             Display the reconstructed image
+                        Path to the configuration file (default: config.yaml)
+  --sensitivity         Compute the sensitivity and quits (default: False)
+  --simulation          Do a simulation and quit (default: False)
+  --display             Display the reconstructed image after the reconstruction (default: False)
 ```
 
 See the `config.yaml` file for configuring CORESI.
@@ -59,21 +59,19 @@ See the `config.yaml` file for configuring CORESI.
 
 ```bash
 python -m coresi.display_image --help
-usage: display_image.py [-h] -f FILE [-c CONFIG] [-s SLICE] [-a AXIS]
-                        [--cpp | --no-cpp]
+usage: display_image.py [-h] -f FILE [-c CONFIG] [-s SLICE] [-a AXIS] [--cpp | --no-cpp]
 
 CORESI - image display
 
 options:
   -h, --help            show this help message and exit
-  -f FILE, --file FILE  File path to the volume to display
+  -f FILE, --file FILE  File path to the volume to display (default: None)
   -c CONFIG, --config CONFIG
-                        Path to the configuration file
+                        Path to the configuration file (default: config.yaml)
   -s SLICE, --slice SLICE
-                        Slice number
-  -a AXIS, --axis AXIS  Axis x, y or z
-  --cpp, --no-cpp       Use this if the file comes from the C++ version of
-                        CORESI
+                        Slice number (default: 0)
+  -a AXIS, --axis AXIS  Axis x, y or z (default: z)
+  --cpp, --no-cpp       Use this if the file comes from the C++ version of CORESI (default: None)
 ```
 
 # Run tests

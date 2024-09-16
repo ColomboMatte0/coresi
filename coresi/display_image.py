@@ -8,7 +8,10 @@ import yaml
 
 from coresi.image import Image
 
-parser = argparse.ArgumentParser(description="CORESI - image display")
+parser = argparse.ArgumentParser(
+    description="CORESI - image display",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
 repo = git.Repo(search_parent_directories=True)
 commit = repo.git.rev_parse("HEAD", short=True)
 
