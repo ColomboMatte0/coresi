@@ -15,6 +15,8 @@ conda env create -f conda-env.yaml
 conda activate coresi
 ```
 
+CORESI is known to work with pytorch version 2.4.1.
+
 # Run
 
 ```bash
