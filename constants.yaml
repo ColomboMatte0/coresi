@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
+#
+# SPDX-License-Identifier: MIT
+
 avogadro: 6.02214179e+23
 m_e: 510.99895000 # electron rest mass in keV
 r_e:  2.8179403227e-13 # electron classical radius in cm

@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
+#
+# SPDX-License-Identifier: MIT
+
 #SBATCH -A hbu@v100
 #SBATCH -C v100-16g
 #SBATCH --job-name=coresi

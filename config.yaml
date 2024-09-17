@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
+#
+# SPDX-License-Identifier: MIT
+
 data_file: CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
 data_type: 'MACACO'
 log_dir: 'logs'
