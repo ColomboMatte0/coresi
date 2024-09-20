@@ -379,7 +379,7 @@ class LM_MLEM(object):
             logger.info(
                 f"Computing sensitivity values with a Monte Carlo simulation, {config_mlem['model']} and {SM_line.__name__}"
             )
-            sensitivity.values = sensitivity_models.lyon_4D(
+            sensitivity.values = sensitivity_models.sm_like(
                 cameras,
                 volume_config,
                 energies,

@@ -12,7 +12,7 @@ from coresi.camera import Camera, generate_random_angle
 from coresi.event import Event
 from coresi.image import Image
 from coresi.point import Point
-from coresi.utils import generate_random_point
+from coresi.utils import generate_random_point, generate_weighted_random_point
 
 _ = torch.set_grad_enabled(False)
 
@@ -157,6 +157,72 @@ def lyon_4D(
                 x2 = generate_random_point(absorber.dim, absorber.center, 1)[0]
                 beta = generate_random_angle(cdf_compton, angles, idx_energy)
                 E_gamma = energy / (1 + (energy / 511.0) * (1 - torch.cos(beta)))
+                # The Event class does the conversion to centimeters
+                x1 = x1 * 10
+                x2 = x2 * 10
+                # Forge an event with the GATE line's format
+                line = f"2\t1\t{x1[0]}\t{x1[1]}\t{x1[2]}\t{energy - E_gamma}\t2\t{x2[0]}\t{x2[1]}\t{x2[2]}\t{E_gamma}\t3\t0\t0\t0\t0"
+                try:
+                    event = Event(
+                        0,
+                        line,
+                        energies,
+                        Point(*volume_config["volume_centre"]),
+                        Point(*volume_config["volume_dimensions"]),
+                    )
+                    event.set_camera_index([camera])
+                except ValueError as e:
+                    logger.debug(f"Skipping event {line.strip()} REASON: {e}")
+                    continue
+                try:
+                    result = SM_line(event, True).values
+                    # Because we want a sensitivity for a given energy, ensure
+                    # that the SM line for the given energy is non-zero
+                    if result[idx_energy].any():
+                        sensitivity_vol.values[idx_energy] = (
+                            sensitivity_vol.values[idx_energy] + result[idx_energy]
+                        )
+                    else:
+                        raise ValueError(f"Got zeros for energy {energy} keV")
+                except ValueError as e:
+                    logger.debug(f"Skipping forged event {line.strip()} REASON: {e}")
+                    continue
+                valid_events += 1
+
+    # We only do the sum here rather than the average because it's unlikely we
+    # get high values as the chance the cone goes perfectly through the
+    # voxel is low
+    return sensitivity_vol.values
+
+
+def sm_like(
+    cameras: list[Camera],
+    volume_config: dict,
+    energies: list[float],
+    SM_line: Callable[[Event, bool], Image],
+    mc_samples: int = 1,
+):
+    """Compute a system matrix by computing the probability of a random gammas
+    reaching the cameras detectos"""
+    sensitivity_vol = Image(len(energies), volume_config)
+    angles = torch.arange(0, 181, 1).deg2rad()
+    cdf_compton = cameras[0].cdf_compton_diff_xsection(energies, angles)
+    volume = Image(len(energies), volume_config, init="ones")
+    for camera in cameras:
+        for idx_energy, energy in enumerate(energies):
+            valid_events = 0
+            while valid_events < mc_samples:
+                x0, k = generate_weighted_random_point(volume, 1)
+                sca = random.choice(camera.sca_layers)
+                absorber = random.choice(camera.abs_layers)
+                x1 = generate_random_point(sca.dim, sca.center, 1)[0]
+                x2 = generate_random_point(absorber.dim, absorber.center, 1)[0]
+                r1 = x1 - x0
+                r2 = x2 - x1
+                cosbeta = (r1 * r2).sum(axis=0) / (
+                    torch.linalg.norm(r1, 2, axis=0) * torch.linalg.norm(r2, 2, axis=0)
+                )
+                E_gamma = energy / (1 + (energy / 511.0) * (1 - cosbeta))
                 # The Event class does the conversion to centimeters
                 x1 = x1 * 10
                 x2 = x2 * 10
