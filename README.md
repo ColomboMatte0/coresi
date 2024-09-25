@@ -36,6 +36,10 @@ CORESI can run on GPU or CPU.
 Make use the environment variable `CUDA_VISIBLE_DEVICES` to tell which GPU
 PyTorch should use.
 
+The batch_scripts folder contains scripts that can be used to run CoReSi on the
+CREATIS and [Jean
+Zay](http://www.idris.fr/eng/jean-zay/jean-zay-presentation-eng.html) clusters.
+
 
 ```bash
 CUDA_VISIBLE_DEVICES="1" python -m coresi.main
