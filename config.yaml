@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: MIT
 
-data_file: CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
-data_type: 'MACACO'
+# data_file: CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
+data_file: simulation.raw
+data_type: 'GATE'
 log_dir: 'logs'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
-E0: [140, 245, 364, 511]
+# E0: [140, 245, 364, 511]
+E0: [364]
 remove_out_of_range_energies: False
 # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
 # otherwise
@@ -16,7 +18,7 @@ energy_range: [120, 150]
 # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
 # des détecteurs)
 energy_threshold: 5
-n_events: 1
+n_events: 10
 starts_at: 0
 
 
@@ -70,37 +72,39 @@ cameras:
     Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
 
 volume:
-  #volume_dimensions: [20.5, 20.5, 10.5] # In centimeters
-  n_voxels: [50,50,1]
-  volume_dimensions: [20,20,0.4] # In centimeters
+  volume_dimensions: [20.25, 20.25, 10.25] # In centimeters
+  n_voxels: [81, 81, 41]
+  # volume_dimensions: [20.25, 20.25, 0.25] # In centimeters
+  # n_voxels: [81,81,1]
+  # volume_dimensions: [20,20,0.4] # In centimeters
+  # n_voxels: [50,50,1]
   volume_centre: [0, 0, 0]
 
 simulation:
-  #n_events: 20000
-  n_events: 1
+  n_events: 20000
+  # n_events: 20
+  n_V2: 100   # samples of V2 positions
   phantom: phantom.pth
   output_file: simulation.raw
   visualize_generated_source: True
-  angle_threshold: 5 # In degrees. It's hard to compute the exact x2 (second hit in the absorber) that corresponds to the randomly chosen angle. So draw candidates and pick one that loosely match the angle according to this threshold
+  angle_threshold: 5 # In degrees. It's hard to compute the exact V2 (second hit in the absorber) that corresponds to the randomly chosen angle. So draw candidates and pick one that loosely match the angle according to this threshold
 
 lm_mlem:
   cone_thickness: 'parallel' # angular or parallel
-  last_iter: 9
-  model: 'cos0rho0' # Either cos0rho0, cos0rho2 or cos1rho2. Use cos0rho0 if sensitivity is disabled.
+  last_iter: 1
+  model: 'cos1rho2' # Either cos0rho0, cos0rho2 or cos1rho2. Use cos0rho0 if sensitivity is disabled.
   first_iter: 0
-  save_every: 2
+  save_every: 1
   checkpoint_dir: checkpoints
   # force sperctral algorithm even if there is only one energy
   force_spectral: false
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
   width_factor: 1 # Used to artificially modify the spread of the cone
-  checkpoint_dir: checkpoints
-  save_every: 76
-  sensitivity: false
-  sensitivity_model: like_system_matrix # from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+  sensitivity: true
+  sensitivity_model: like_system_matrix  #from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
   mc_samples: 1
   tv: false
   alpha_tv: 0.000
   # Supply a sensitivity file. Needs to have the same size as the number of
   # voxels in the volume
-  sensitivity_file: sensitivity.pth
+  sensitivity_file: Sensitivities/parallel_MC_500000_sensitivity.pth

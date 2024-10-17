@@ -58,6 +58,7 @@ class Image:
     def display_x(
         self, energy: int = 0, slice: int = 0, title: str = "", ax=None, fig=None
     ):
+        plt.rcParams.update({'font.size': 16})
         if ax is None:
             fig, ax = plt.subplots()
         mappable = ax.imshow(
@@ -75,6 +76,7 @@ class Image:
         ax.set_title(f"slice {str(slice)} of the x axis view " + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
+        # fig.savefig("Simu364_x_40_it_20.png", dpi=fig.dpi, bbox_inches='tight')
         plt.show()
 
     def display_y(
@@ -103,6 +105,7 @@ class Image:
     def display_z(
         self, energy: int = 0, slice: int = 0, title: str = "", ax=None, fig=None
     ):
+        plt.rcParams.update({'font.size': 16})
         if ax is None:
             fig, ax = plt.subplots()
         mappable = ax.imshow(
@@ -120,6 +123,7 @@ class Image:
         ax.set_title(f"slice {str(slice)}  of the z axis view " + title)
         fig.colorbar(mappable, cax=cax, orientation="vertical")
         fig.tight_layout()
+        # fig.savefig("Simu364_z_20_it_20.png", dpi=fig.dpi, bbox_inches='tight')
         plt.show()
 
     def save_all(

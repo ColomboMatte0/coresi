@@ -99,6 +99,7 @@ def run():
             cameras,
             config["simulation"]["n_events"],
             config["E0"][0],
+            config["simulation"]["n_V2"],
             visualize_generated_source=config["simulation"][
                 "visualize_generated_source"
             ],
@@ -134,7 +135,7 @@ def run():
         config["E0"],
         config["energy_threshold"],
     )
-    mlem.init_sensitiviy(config["lm_mlem"], checkpoint_dir)
+    mlem.init_sensitivity(config["lm_mlem"], checkpoint_dir)
 
     logger.info(f"Processing {config['data_file']}")
 

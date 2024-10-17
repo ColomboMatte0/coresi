@@ -7,7 +7,7 @@
 #PBS -o coresi_stdout.txt
 #PBS -e coresi_stdout.txt
 #PBS -m ae
-#PBS -M vincent.lequertier@creatis.insa-lyon.fr
+#PBS -M voichita.maxim@creatis.insa-lyon.fr
 
 set -e
 

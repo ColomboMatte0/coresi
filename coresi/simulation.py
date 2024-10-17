@@ -45,9 +45,10 @@ def simulate(
     logger.info(f"Doing a simulation for {str(n_events)} events")
     while n_valid_forged_events < n_events:
         n_forged_events += 1
-        x0, k = generate_weighted_random_point(source, 1)
+        #x0 is in the xyplane, k is the slice number
+        x0, k = generate_weighted_random_point(source, 1) 
         camera = random.choice(cameras)
-        cdf_compton = camera.cdf_compton_diff_xsection([energy], angles)
+        cdf_compton = camera.cdf_compton_diff_xsection_dtheta([energy], angles)
         sca = random.choice(camera.sca_layers)
         x1 = generate_random_point(sca.dim, sca.center, 1)[0]
         r1 = x1 - x0
@@ -89,7 +90,7 @@ def simulate(
     torch.save(betas, "betas.pth")
     logger.info("Simulation done")
     logger.debug(
-        f"x2 success rate = {str(n_valid_forged_events * 100 / n_forged_events)}%"
+        f"V2 success rate = {str(n_valid_forged_events * 100 / n_forged_events)}%"
     )
     return "\n".join(simulated_events)
 
@@ -120,12 +121,12 @@ def visualize_source_points(points, slice, source):
         ]
         axs[0].set_xlim(*plot_dims[0])
         axs[0].set_ylim(*plot_dims[1])
-        # axs[0].grid()
-        axs[0].set_xticks(
-            np.linspace(*plot_dims[0], (source.dim_in_voxels[0] + 1) // 2)
-        )
-        axs[0].set_yticks(
-            np.linspace(*plot_dims[1], (source.dim_in_voxels[1] + 1) // 2)
-        )
+        ##  axs[0].grid()
+        # axs[0].set_xticks(
+        #     np.linspace(*plot_dims[0], (source.dim_in_voxels[0] + 1) // 2)
+        # )
+        # axs[0].set_yticks(
+        #     np.linspace(*plot_dims[1], (source.dim_in_voxels[1] + 1) // 2)
+        # )
         source.display_z(ax=axs[1], fig=fig, slice=z)
         plt.show()

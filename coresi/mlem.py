@@ -294,7 +294,7 @@ class LM_MLEM(object):
 
         return back_proj
 
-    def init_sensitiviy(self, config_mlem: dict, checkpoint_dir: Path) -> None:
+    def init_sensitivity(self, config_mlem: dict, checkpoint_dir: Path) -> None:
         self.sensitivity = Image(self.n_energies, self.config_volume, init="ones")
         if (
             config_mlem["sensitivity"]
@@ -320,6 +320,7 @@ class LM_MLEM(object):
                 self.sensitivity.values = torch.load(
                     config_mlem["sensitivity_file"], map_location=torch.device("cpu")
                 )
+            logger.info(self.sensitivity.values.size())
         else:
             logger.info("Sensivitiy is disabled, setting it to ones")
 

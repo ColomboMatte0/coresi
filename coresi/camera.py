@@ -9,6 +9,7 @@ from logging import getLogger
 import numpy as np
 import torch
 import yaml
+from math import pi
 
 from coresi.interpolation import torch_1d_interp
 from coresi.point import Point
@@ -137,6 +138,8 @@ class Camera(object):
     def get_compton_diff_xsection(
         self, energy: int, cosbeta: float | torch.Tensor
     ) -> float | torch.Tensor:
+        """ Klein-Nishina formula, corresponding to the differential cross-section
+        in dsigma/dOmega, Omega is a solid angle"""
         P = 1.0 / (1.0 + energy / self.m_e * (1 - cosbeta))
         # ENRIQUE: Why avogadro number is involved, and issue with the units
         # compared to regular KN formula and Enrique's thesis?
@@ -145,8 +148,20 @@ class Camera(object):
             * torch.pow(P, 2)
             * (P + 1.0 / P - 1.0 + torch.pow(cosbeta, 2))
         )
+    
+    
+    def get_compton_diff_xsection_dtheta(
+        self, energy: int, cosbeta: float | torch.Tensor
+    ) -> float | torch.Tensor:
+        """ Differential cross-section in dsigma/dtheta, theta is the Compton 
+        scattering angle. Relation with KN : KN*2*pi*sin(theta). 
+        Tends to 0 when theta tends to 0."""
+        return (
+            self.get_compton_diff_xsection(energy, cosbeta)
+            * 2*pi * torch.sqrt(1-torch.pow(cosbeta,2))
+        )
 
-    def cdf_compton_diff_xsection(
+    def cdf_compton_diff_xsection_dtheta(
         self, energies: list[float], angles: torch.Tensor
     ) -> torch.Tensor:
         """get the cumulative probability of Compton scattering for a list of
@@ -155,7 +170,7 @@ class Camera(object):
         for energy in energies:
             KN = torch.tensor(
                 [
-                    self.get_compton_diff_xsection(energy, torch.cos(angle))
+                    self.get_compton_diff_xsection_dtheta(energy, torch.cos(angle))
                     for angle in angles
                 ]
             )

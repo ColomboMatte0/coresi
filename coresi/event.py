@@ -48,9 +48,9 @@ class Event(object):
         self.volume_center = volume_center
         self.volume_dim = volume_dim
         if format == "GATE":
-            self.read_gate_dat_file(line)
+            self.read_gate_data_file(line)
 
-    def read_gate_dat_file(self, line: str) -> None:
+    def read_gate_data_file(self, line: str) -> None:
         data = line.split("\t")
         # We only deal with two interaction events, don't load other fields
         # Convert str fields to floats
