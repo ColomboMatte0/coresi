@@ -67,6 +67,9 @@ def block(
 def attenuation_exp(
     cameras: list[Camera],
     volume_config: dict,
+    x: torch.Tensor,
+    y: torch.Tensor,
+    z: torch.Tensor,
 ):
     sensitivity_vol = Image(1, volume_config)
     cameras = [cameras[0]]
