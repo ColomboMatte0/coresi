@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
-#
+# CREATIS Laboratory, INSA Lyon, France
 # SPDX-License-Identifier: MIT
 
 import random
@@ -32,6 +32,7 @@ def block(
     cameras = [cameras[0]]
     # As computed here the sensitivity does not depend on the energy
     sensitivity_vol = Image(1, volume_config)
+    # Put the volume in the coordinate system of the camera
     for camera in cameras:
         points = torch.tensordot(
             (
@@ -67,26 +68,28 @@ def block(
 def attenuation_exp(
     cameras: list[Camera],
     volume_config: dict,
-    x: torch.Tensor,
-    y: torch.Tensor,
-    z: torch.Tensor,
+    energies: list[float],
+	x: torch.Tensor,
+	y: torch.Tensor,
+	z: torch.Tensor,
 ):
-    sensitivity_vol = Image(1, volume_config)
+    sensitivity_vol = Image(len(energies), volume_config)
     cameras = [cameras[0]]
+    
     for camera in cameras:
-        # As computed here the sensitivity does not depend on the energy
         b, d = camera.sca_layers[0].dim.x / 2, camera.sca_layers[0].dim.y / 2
         a, c = -b, -d
         Nx = 100
         Ny = 100
         hx = (b - a) / Nx
         hy = (d - c) / Ny
+        # Put the volume in the coordinate system of the camera
         points = torch.tensordot(
             (
                 torch.tensor(
                     [
-                        Point(x[idx], y[idx2], z[idx3])
-                        for idx in range(len(x))
+                        Point(x[idx1], y[idx2], z[idx3])
+                        for idx1 in range(len(x))
                         for idx2 in range(len(y))
                         for idx3 in range(len(z))
                     ]
@@ -96,45 +99,57 @@ def attenuation_exp(
             torch.tensor((camera.Ox, camera.Oy, camera.Oz), dtype=torch.double),
             dims=1,
         ).to(device)
-        for idx_layer, layer in enumerate(camera.sca_layers + camera.abs_layers):
-            # 3rd dimension is z
-            D = torch.abs(points[:, 2] - layer.center.z)
-            trap = 0.0
-            for m in range(1, Nx):
-                for n in range(1, Ny):
-                    sq = (
-                        (
-                            (a + (m + 0.5) * hx - points[:, 0])
-                            * (a + (m + 0.5) * hx - points[:, 0])
+        for idx_energy, energy in enumerate(energies):
+            # Only compute sensitivity for sca layers, assume probabilities for 
+            # hits in absorber the same. Also assume first hit in sca. To be improved ...
+            for idx_layer, layer in enumerate(camera.sca_layers):
+            #for idx_layer, layer in enumerate(camera.sca_layers + camera.abs_layers):
+                # Compton linear attenuation coefficient (incoherent scattering)
+                mu_Compton = camera.get_incoherent_diff_xsection(
+                           energy, layer.detector_type
+                           ) * camera.sca_density
+                # total linear attenuation coefficient
+                mu_total = camera.get_total_diff_xsection(
+                           energy, layer.detector_type
+                           ) * camera.sca_density
+                # 3rd dimension is z
+                D = torch.abs(points[:, 2] - layer.center.z)
+                rect = 0.0
+                for m in range(0, Nx):
+                    for n in range(0, Ny):
+                        sq = (
+                            (
+                                (a + (m + 0.5) * hx - points[:, 0])
+                                * (a + (m + 0.5) * hx - points[:, 0])
+                            )
+                            + (
+                                (c + (n + 0.5) * hy - points[:, 1])
+                                * (c + (n + 0.5) * hy - points[:, 1])
+                            )
+                            + D**2
                         )
-                        + (
-                            (c + (n + 0.5) * hy - points[:, 1])
-                            * (c + (n + 0.5) * hy - points[:, 1])
-                        )
-                        + D**2
-                    )
-                    # trap
-                    # += 1.0/sq*exp(-mu*L*(layer-1)*sqrt(sq)/D);
-                    trap += (
-                        D
-                        * torch.pow(sq, -1.5)
-                        * torch.exp(
-                            -mu
-                            * camera.sca_layers[0].dim.z
-                            * (idx_layer - 1)
-                            * torch.sqrt(sq)
-                            / D
-                        )
-                        * (
-                            1
-                            - torch.exp(
-                                -mu * camera.sca_layers[0].dim.z * torch.sqrt(sq) / D
+                        # rect
+                        # += 1.0/sq*exp(-mu*L*(layer-1)*sqrt(sq)/D);
+                        rect += (
+                            D
+                            * torch.pow(sq, -1.5)
+                            * torch.exp(
+                                -mu_total
+                                * camera.sca_layers[0].dim.z
+                                * idx_layer
+                                * torch.sqrt(sq)
+                                / D
+                            )
+                            * (
+                                1
+                                - torch.exp(
+                                    -mu_Compton * camera.sca_layers[0].dim.z * torch.sqrt(sq) / D
+                                )
                             )
                         )
-                    )
-            sensitivity_vol.values += (
-                trap.reshape(sensitivity_vol.values.shape) * hx * hy
-            )
+                sensitivity_vol.values[idx_energy] += (
+                    rect.reshape(sensitivity_vol.values[idx_energy].shape) * hx * hy
+                )
     return sensitivity_vol.values
 
 
@@ -149,7 +164,7 @@ def lyon_4D(
     reaching the cameras detectos"""
     sensitivity_vol = Image(len(energies), volume_config)
     angles = torch.arange(0, 181, 1).deg2rad()
-    cdf_compton = cameras[0].cdf_compton_diff_xsection(energies, angles)
+    cdf_compton = cameras[0].cdf_compton_diff_xsection_dtheta(energies, angles)
     for camera in cameras:
         for idx_energy, energy in enumerate(energies):
             valid_events = 0
@@ -209,13 +224,14 @@ def sm_like(
     reaching the cameras detectos"""
     sensitivity_vol = Image(len(energies), volume_config)
     angles = torch.arange(0, 181, 1).deg2rad()
-    cdf_compton = cameras[0].cdf_compton_diff_xsection(energies, angles)
-    volume = Image(len(energies), volume_config, init="ones")
+    # cdf_compton = cameras[0].cdf_compton_diff_xsection(energies, angles)
+    # volume = Image(len(energies), volume_config, init="ones")
     for camera in cameras:
         for idx_energy, energy in enumerate(energies):
             valid_events = 0
             while valid_events < mc_samples:
-                x0, k = generate_weighted_random_point(volume, 1)
+                # x0, k = generate_weighted_random_point(volume, 1)
+                x0 = generate_random_point(sensitivity_vol.dim_in_cm, sensitivity_vol.center, 1)[0]
                 sca = random.choice(camera.sca_layers)
                 absorber = random.choice(camera.abs_layers)
                 x1 = generate_random_point(sca.dim, sca.center, 1)[0]
