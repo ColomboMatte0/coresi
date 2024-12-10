@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
-#
+# CREATIS Laboratory, INSA Lyon, France
 # SPDX-License-Identifier: MIT
 
 import sys
@@ -149,6 +149,25 @@ class Camera(object):
             * (P + 1.0 / P - 1.0 + torch.pow(cosbeta, 2))
         )
     
+    def cdf_compton_diff_xsection(
+        self, energies: list[float], angles: torch.Tensor
+    ) -> torch.Tensor:
+        """get the cumulative probability of Compton scattering for a list of
+        energies, in dsigma/dOmega, Omega is a solid angle. Not used anymore."""
+        cdf_angles = []
+        for energy in energies:
+            KN = torch.tensor(
+                [
+                    self.get_compton_diff_xsection(energy, torch.cos(angle))
+                    for angle in angles
+                ]
+            )
+            cdf_KN = torch.cumsum(KN, dim=0)
+            cdf_KN = (cdf_KN[0:-1] + cdf_KN[1:]) / 2
+            cdf_KN = torch.cat([torch.tensor([0]), cdf_KN]) / cdf_KN[-1]
+            cdf_angles.append(cdf_KN)
+
+        return torch.stack(cdf_angles, dim=0)
     
     def get_compton_diff_xsection_dtheta(
         self, energy: int, cosbeta: float | torch.Tensor
@@ -218,6 +237,23 @@ class Camera(object):
                 nist_table[table_index + 1, 0] - nist_table[table_index, 0]
             )
 
+    def get_incoherent_diff_xsection(
+        self, energy: int | torch.Tensor, detector_type: DetectorType
+    ) -> float:
+        table_index, nist_table = self.get_table_and_index(energy, detector_type)
+        if isinstance(energy, float):
+            return nist_table[table_index][1] + (
+                nist_table[table_index + 1][1] - nist_table[table_index][1]
+            ) * ((energy / 1000) - nist_table[table_index][0]) / (
+                nist_table[table_index + 1][0] - nist_table[table_index][0]
+            )
+        else:
+            return nist_table[table_index, 1] + (
+                nist_table[table_index + 1, 1] - nist_table[table_index, 1]
+            ) * ((energy / 1000) - nist_table[table_index, 0]) / (
+                nist_table[table_index + 1, 0] - nist_table[table_index, 0]
+            )
+                
     def get_total_diff_xsection(
         self, energy: int | torch.Tensor, detector_type: DetectorType
     ) -> float:

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
-#
+# CREATIS Laboratory, INSA Lyon, France
 # SPDX-License-Identifier: MIT
 
 import json
@@ -167,7 +167,7 @@ class LM_MLEM(object):
                         result.values[idx], self.sensitivity.values[idx], self.alpha_tv
                     )
 
-            # It must be re-initialized as zero as temporary values are sumed
+            # It must be re-initialized as zero as temporary values are asumed
             next_result.values = torch.zeros(
                 self.n_energies,
                 next_result.dim_in_voxels.x,
@@ -371,11 +371,11 @@ class LM_MLEM(object):
         elif config_mlem["sensitivity_model"] == "solid_angle_with_attn":
             logger.info("Computing sensitivity values using layers attenuation")
             sensitivity.values = sensitivity_models.attenuation_exp(
-                cameras, volume_config, x, y, z
+                cameras, 
+                volume_config, 
+                energies, 
+                x, y, z
             )
-            if len(energies) > 1:
-                # With this model the sensitivity is the same for all energies
-                sensitivity.values = sensitivity.values.repeat(len(energies), 1, 1, 1)
         elif config_mlem["sensitivity_model"] == "like_system_matrix":
             logger.info(
                 f"Computing sensitivity values with a Monte Carlo simulation, {config_mlem['model']} and {SM_line.__name__}"
@@ -389,13 +389,14 @@ class LM_MLEM(object):
             )
 
         sens_filename = (
-            config_mlem["cone_thickness"]
+            "sens"
             + (
                 "_MC_" + str(config_mlem["mc_samples"])
                 if config_mlem["sensitivity_model"] == "like_system_matrix"
                 else "_geo"
             )
-            + "_sensitivity.pth"
+            +config_mlem["cone_thickness"]
+            + ".pth"
         )
         logger.info(
             f"Sensitivity done, saving to {str(checkpoint_dir / sens_filename)}"

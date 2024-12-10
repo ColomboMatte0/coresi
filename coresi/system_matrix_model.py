@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
-#
+# CREATIS Laboratory, INSA Lyon, France
 # SPDX-License-Identifier: MIT
 
 import os
@@ -423,8 +423,8 @@ class SM_Model(object):
             pair_x_section = camera.get_pair_diff_xsection(
                 self.energies[idx] - event.Ee, DetectorType.ABS
             )
-            # Absorbition total is Photoelectric, partial absorbition is either
-            # compton or pair production
+            # Absorption total is Photoelectric, partial absorption is either
+            # Compton or pair production
             # Photoelectric
             if abs(self.energies[idx] - event.E0) < self.tol:
                 int2Xsect = (

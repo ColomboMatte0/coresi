@@ -95,13 +95,13 @@ lm_mlem:
   model: 'cos1rho2' # Either cos0rho0, cos0rho2 or cos1rho2. Use cos0rho0 if sensitivity is disabled.
   first_iter: 0
   save_every: 1
-  checkpoint_dir: checkpoints
+  checkpoint_dir: checkpoints_test
   # force sperctral algorithm even if there is only one energy
   force_spectral: false
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
   width_factor: 1 # Used to artificially modify the spread of the cone
   sensitivity: true
-  sensitivity_model: like_system_matrix  #from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+  sensitivity_model: solid_angle_with_attn  #from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
   mc_samples: 1
   tv: false
   alpha_tv: 0.000

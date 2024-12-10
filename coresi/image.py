@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
-#
+# CREATIS Laboratory, INSA Lyon, France
 # SPDX-License-Identifier: MIT
 
 import matplotlib.pyplot as plt
