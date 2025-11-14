@@ -85,7 +85,12 @@ def block(
             
             # Generate all possible angle combinations for this level
             # We need 'level' nested loops, each iterating 4 times (angles at 45°, 135°, 225°, 315°)
-            base_angles = torch.tensor([torch.pi / 2 * (0.5 + i) for i in range(4)])
+            # Put angle tensor on the same device/dtype as center_points to avoid device-mismatch
+            base_angles = torch.tensor(
+                [torch.pi / 2 * (0.5 + i) for i in range(4)],
+                device=device,
+                dtype=center_points.dtype,
+            )
             
             # Create all combinations using meshgrid
             # For level 1: 4 angles -> 4 points
@@ -95,8 +100,9 @@ def block(
             angles_per_subdivision = torch.stack([grid.flatten() for grid in angle_grids], dim=1)  # [n_points, level]
             
             # Compute cumulative shifts from all subdivision levels
-            shifts_x = torch.zeros(n_points)
-            shifts_y = torch.zeros(n_points)
+            # Ensure shifts are allocated on the same device/dtype as center_points
+            shifts_x = torch.zeros(n_points, device=device, dtype=center_points.dtype)
+            shifts_y = torch.zeros(n_points, device=device, dtype=center_points.dtype)
             
             for sub_level in range(level):
                 # Distance factor: sqrt(2) / 2^(sub_level+2)
