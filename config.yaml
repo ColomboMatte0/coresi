@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: MIT
 
 # data_file: CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
-data_file: simulation.raw
+data_file: data/test.csv
 data_type: 'GATE'
 log_dir: 'logs'
 # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
 # E0: [140, 245, 364, 511]
-E0: [364]
+E0: [1000]
 remove_out_of_range_energies: False
 # Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
 # otherwise
@@ -18,62 +18,154 @@ energy_range: [120, 150]
 # (valeurs Enrique, mais devrait être choisi en fonction de la résolution
 # des détecteurs)
 energy_threshold: 5
-n_events: 10
-starts_at: 0
+n_events: 10000
+starts_at: 1
 
 
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 # Up to 5 absorbers are implemented
+# cameras:
+#   n_cameras: 1
+#     # Cameras scatterer have the same characteristics besides their positions
+#   common_attributes:
+#     n_sca_layers: 7
+#     sca_material: Si
+#     abs_material: BGO
+#     sca_layer_0:
+#       center: [0, 0, -10]
+#       size: [9.0, 9.0, 0.2]
+#     sca_layer_1:
+#       center: [0, 0, -11]
+#       size: [9.0, 9.0, 0.2]
+#     sca_layer_2:
+#      center: [0, 0, -12]
+#      size: [9.0, 9.0, 0.2]
+#     sca_layer_3:
+#       center: [0, 0, -13]
+#       size: [9.0, 9.0, 0.2]
+#     sca_layer_4:
+#       center: [0, 0, -14]
+#       size: [9.0, 9.0, 0.2]
+#     sca_layer_5:
+#       center: [0, 0, -15]
+#       size: [9.0, 9.0, 0.2]
+#     sca_layer_6:
+#       center: [0, 0, -16]
+#       size: [9.0, 9.0, 0.2]
+
+#     n_absorbers: 1
+
+#     # if an absorber layer is missing, define it as None
+#     # For example, abs_layer_1: None
+#     abs_layer_0: # bottom
+#       center: [0, 0, -31.0]
+#       size: [28.0, 21.0, 3]
+#     abs_layer_1: None # front
+#     abs_layer_2: None # rear
+#     abs_layer_3: None # right
+#     abs_layer_4: None # left
+    
+#   position_0:
+#     frame_origin: [0, 0, 0]
+#     Ox: [1, 0, 0]    # parallel to scatterer edge
+#     Oy: [0, 1, 0]    # parallel to scatterer edge
+#     Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+
 cameras:
-  n_cameras: 1
+  n_cameras: 12
     # Cameras scatterer have the same characteristics besides their positions
   common_attributes:
-    n_sca_layers: 7
-    sca_material: Si
-    abs_material: BGO
-    sca_layer_0:
-      center: [0, 0, -10]
-      size: [9.0, 9.0, 0.2]
-    sca_layer_1:
-      center: [0, 0, -11]
-      size: [9.0, 9.0, 0.2]
-    sca_layer_2:
-     center: [0, 0, -12]
-     size: [9.0, 9.0, 0.2]
-    sca_layer_3:
-      center: [0, 0, -13]
-      size: [9.0, 9.0, 0.2]
-    sca_layer_4:
-      center: [0, 0, -14]
-      size: [9.0, 9.0, 0.2]
-    sca_layer_5:
-      center: [0, 0, -15]
-      size: [9.0, 9.0, 0.2]
-    sca_layer_6:
-      center: [0, 0, -16]
-      size: [9.0, 9.0, 0.2]
-
-    n_absorbers: 1
-
-    # if an absorber layer is missing, define it as None
-    # For example, abs_layer_1: None
-    abs_layer_0: # bottom
-      center: [0, 0, -31.0]
-      size: [28.0, 21.0, 3]
-    abs_layer_1: None # front
-    abs_layer_2: None # rear
-    abs_layer_3: None # right
-    abs_layer_4: None # left
-
+    material: LSO
+    size: [5.1, 5.1, 2.0]
+    frame_origin: [0,0,0]
+  
+    # Sector 0: 0° (on +X axis)
   position_0:
-    frame_origin: [0, 0, 0]
-    Ox: [1, 0, 0]    # parallel to scatterer edge
-    Oy: [0, 1, 0]    # parallel to scatterer edge
-    Oz: [0, 0, 1]    # orthogonal to the camera, tw the source
+    Ox: [0, 0, 1]           # Vertical (up)
+    Oy: [0, 1, 0]           # Tangent (counterclockwise)
+    Oz: [-1, 0, 0]          # Normal (inward)
+    center: [10, 0, 0]   # Detector center in world coords
+
+  # Sector 1: 30°
+  position_1:
+    Ox: [0, 0, 1]
+    Oy: [-0.5, 0.866, 0]
+    Oz: [-0.866, -0.5, 0]
+    center: [8.66, 5, 0]
+
+  # Sector 2: 60°
+  position_2:
+    Ox: [0, 0, 1]
+    Oy: [-0.866, 0.5, 0]
+    Oz: [-0.5, -0.866, 0]
+    center: [5, 8.66, 0]
+
+  # Sector 3: 90° (on +Y axis)
+  position_3:
+    Ox: [0, 0, 1]
+    Oy: [-1, 0, 0]
+    Oz: [0, -1, 0]
+    center: [0, 10, 0]
+
+  # # Sector 4: 120°
+  position_4:
+    Ox: [0, 0, 1]
+    Oy: [-0.866, -0.5, 0]
+    Oz: [0.5, -0.866, 0]
+    center: [-5, 8.66, 0]
+
+  # Sector 5: 150°
+  position_5:
+    Ox: [0, 0, 1]
+    Oy: [-0.5, -0.866, 0]
+    Oz: [0.866, -0.5, 0]
+    center: [-8.66, 5, 0]
+
+  # Sector 6: 180° (on -X axis)
+  position_6:
+    Ox: [0, 0, 1]
+    Oy: [0, -1, 0]
+    Oz: [1, 0, 0]
+    center: [-10, 0, 0]
+
+  # Sector 7: 210°
+  position_7:
+    Ox: [0, 0, 1]
+    Oy: [0.5, -0.866, 0]
+    Oz: [0.866, 0.5, 0]
+    center: [-8.66, -5, 0]
+
+  # Sector 8: 240°
+  position_8:
+    Ox: [0, 0, 1]
+    Oy: [0.866, -0.5, 0]
+    Oz: [0.5, 0.866, 0]
+    center: [-5, -8.66, 0]
+
+  # Sector 9: 270° (on -Y axis)
+  position_9:
+    Ox: [0, 0, 1]
+    Oy: [1, 0, 0]
+    Oz: [0, 1, 0]
+    center: [0, -10, 0]
+
+  # Sector 10: 300°
+  position_10:
+    Ox: [0, 0, 1]
+    Oy: [0.866, 0.5, 0]
+    Oz: [-0.5, 0.866, 0]
+    center: [5, -8.66, 0]
+
+  # Sector 11: 330°
+  position_11:
+    Ox: [0, 0, 1]
+    Oy: [0.5, 0.866, 0]
+    Oz: [-0.866, 0.5, 0]
+    center: [8.66, -5, 0]
 
 volume:
-  volume_dimensions: [20.25, 20.25, 10.25] # In centimeters
-  n_voxels: [81, 81, 41]
+  volume_dimensions: [18.5, 18.5, 5.5] # In centimeters
+  n_voxels: [37, 37, 11]
   # volume_dimensions: [20.25, 20.25, 0.25] # In centimeters
   # n_voxels: [81,81,1]
   # volume_dimensions: [20,20,0.4] # In centimeters
@@ -91,20 +183,21 @@ simulation:
 
 lm_mlem:
   cone_thickness: 'parallel' # angular or parallel
-  last_iter: 1
+  last_iter: 20
   model: 'cos1rho2' # Either cos0rho0, cos0rho2 or cos1rho2. Use cos0rho0 if sensitivity is disabled.
   first_iter: 0
   save_every: 1
-  checkpoint_dir: checkpoints_test
+  sensitivity_save_name : sens_parallel_4.pth
+  checkpoint_dir: recons/test
   # force sperctral algorithm even if there is only one energy
   force_spectral: false
-  n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
-  width_factor: 1 # Used to artificially modify the spread of the cone
+  n_sigma: 4 # Skip the Gaussian above n_sigma * Gaussian std
+  width_factor: 2 # Used to artificially modify the spread of the cone
   sensitivity: true
-  sensitivity_model: solid_angle_with_attn  #from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+  sensitivity_model: solid_angle  #from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
   mc_samples: 1
   tv: false
   alpha_tv: 0.000
   # Supply a sensitivity file. Needs to have the same size as the number of
   # voxels in the volume
-  sensitivity_file: Sensitivities/parallel_MC_500000_sensitivity.pth
+  sensitivity_file: sensitivity/sens_geoparallel.pth

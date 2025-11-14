@@ -27,6 +27,9 @@ class Image:
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.n_energies = n_energies
+        
+        # Create cylindrical mask (inscribed circle in XY plane)
+        self.mask = self.set_mask()
 
         # Contains the actual values of the image
         if init == "zeros":
@@ -45,6 +48,52 @@ class Image:
                 int(self.dim_in_voxels.z),
                 device=self.device,
             )
+
+    def set_mask(self):
+        """
+        Create a binary cylindrical mask with inscribed circle in XY plane.
+        The mask is True inside the cylinder (inscribed circle), False outside.
+        The cylinder extends along the entire Z axis.
+        
+        Returns:
+            torch.Tensor: Boolean mask of shape (nx, ny, nz) with dtype=torch.bool
+        """
+        nx = int(self.dim_in_voxels.x)
+        ny = int(self.dim_in_voxels.y)
+        nz = int(self.dim_in_voxels.z)
+        
+        # Use the same coordinate system as create_mesh_axes to ensure alignment
+        # Points are centered at the middle of each voxel
+        x = torch.linspace(
+            self.corner.x + (self.voxel_size.x / 2),
+            self.corner.x + self.dim_in_cm.x - (self.voxel_size.x / 2),
+            nx,
+            device=self.device
+        )
+        y = torch.linspace(
+            self.corner.y + (self.voxel_size.y / 2),
+            self.corner.y + self.dim_in_cm.y - (self.voxel_size.y / 2),
+            ny,
+            device=self.device
+        )
+        
+        # Create meshgrid
+        X, Y = torch.meshgrid(x, y, indexing='ij')
+        
+        # Radius of inscribed circle (smaller of the two dimensions)
+        radius = min(self.dim_in_cm.x, self.dim_in_cm.y) / 2
+        
+        # Calculate distance from center for each point in XY plane
+        distance = torch.sqrt((X - self.center.x)**2 + (Y - self.center.y)**2)
+        
+        # Create 2D circular mask as boolean (True inside circle, False outside)
+        mask_2d = distance <= radius
+        
+        # Expand to 3D cylinder (same mask for all Z slices)
+        mask_3d = mask_2d.unsqueeze(2).expand(nx, ny, nz).contiguous()
+        
+        return mask_3d
+
 
     def set_to_zeros(self):
         self.values = torch.zeros(

@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import yaml
 
-from coresi.camera import Camera, DetectorType
+from coresi.single_layer_camera import SingleLayerCamera as Camera
 from coresi.event import Event
 from coresi.image import Image
 from coresi.interpolation import torch_1d_interp
@@ -263,7 +263,7 @@ class SM_Model(object):
         # -1,1 range. Clamp the values to workaround that.
         cos_delta_j = torch.clamp(cos_delta_j, min=-1.0, max=1.0)
 
-        # ddelta is the angle from the voxels to the cone surface
+        # delta is the angle from the voxels to the cone surface
         self.line.values = torch.abs(torch.arccos(cos_delta_j) - event.beta)
 
         # Discard voxels not within the "thick" cone
@@ -1033,6 +1033,11 @@ class SM_Model(object):
 
         # Ti is here i.e. the system matrix for an event i
         self.line.values[mask] = KN * self.line.values[mask]
+        self.line.values = torch.where(
+            self.line.mask,
+            self.line.values,
+            torch.tensor(0.0, device=self.line.values.device)
+        )
         return self.line
 
     def SM_parallel_thickness_spectral(

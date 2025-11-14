@@ -13,7 +13,7 @@ import numpy as np
 import torch
 
 import coresi.sensitivity as sensitivity_models
-from coresi.camera import Camera
+from coresi.single_layer_camera import SingleLayerCamera as Camera
 from coresi.event import Event
 from coresi.image import Image
 from coresi.system_matrix_model import SM_Model
@@ -92,6 +92,7 @@ class LM_MLEM(object):
             sys.exit(1)
         # Was lambda in C++ but lambda is a reserved keyword in Python
         result = Image(self.n_energies, self.config_volume, init="ones")
+        result.values *= result.mask
 
         # Load a checkpoint if necessary
         if first_iter > 0:
@@ -133,6 +134,8 @@ class LM_MLEM(object):
                     # first iteration
                     # This for the case of a first-iter different than 0.
                     line = self.SM_line(event, (iter - first_iter) == 0)
+                    # Apply mask to line to avoid accumulating outside cylinder
+                    line.values = line.values
                 except ValueError as e:
                     logger.debug(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we know we don't need to
@@ -144,8 +147,14 @@ class LM_MLEM(object):
                 if iter == 0:
                     next_result.values += line.values
                 else:
-                    forward_proj = torch.mul(line.values, result.values).sum()
+                    forward_proj = torch.mul(line.values, result.values).sum() + 1e-3
+                    
+                    if forward_proj == 0:
+                        logger.warning(f"forward_proj is zero for event {event.id}, skipping")
+                        continue
+                    
                     next_result.values += line.values / forward_proj
+
 
             if len(to_delete) > 0:
                 events = np.delete(events, to_delete)
@@ -156,11 +165,19 @@ class LM_MLEM(object):
 
             # Do not take sensitivity into account at iteration 0
             if iter == 0:
-                result.values = next_result.values
-            else:
-                result.values = (
-                    result.values / self.sensitivity.values * next_result.values
+                result.values = torch.where(
+                    result.mask,
+                    next_result.values,
+                    torch.tensor(0.0, device=result.values.device)
                 )
+            else:
+                # Apply sensitivity correction only inside the mask
+                result.values = torch.where(
+                    result.mask,
+                    (result.values / self.sensitivity.values) * next_result.values,
+                    torch.tensor(0.0, device=result.values.device)
+                )
+                
             if self.tv is True:
                 for idx in range(self.n_energies):
                     result.values[idx] = TV_dual_denoising(
@@ -331,7 +348,7 @@ class LM_MLEM(object):
         cameras: list[Camera],
         SM_line: Callable[[Event, bool], Image],
         config_mlem: dict,
-        checkpoint_dir: Path,
+        sens_dir: Path,
     ) -> torch.Tensor:
         """docstring for compute sensitivity"""
         # TODO: if interpolate need to increase volume dim and crop after
@@ -368,6 +385,7 @@ class LM_MLEM(object):
             if len(energies) > 1:
                 # With this model the sensitivity is the same for all energies
                 sensitivity.values = sensitivity.values.repeat(len(energies), 1, 1, 1)
+        
         elif config_mlem["sensitivity_model"] == "solid_angle_with_attn":
             logger.info("Computing sensitivity values using layers attenuation")
             sensitivity.values = sensitivity_models.attenuation_exp(
@@ -376,6 +394,7 @@ class LM_MLEM(object):
                 energies, 
                 x, y, z
             )
+
         elif config_mlem["sensitivity_model"] == "like_system_matrix":
             logger.info(
                 f"Computing sensitivity values with a Monte Carlo simulation, {config_mlem['model']} and {SM_line.__name__}"
@@ -387,11 +406,17 @@ class LM_MLEM(object):
                 SM_line,
                 mc_samples=config_mlem["mc_samples"],
             )
+        logger.info("Applying cylindrical mask to sensitivity")
+        sensitivity.values = torch.where(
+            sensitivity.mask,
+            sensitivity.values,
+            torch.tensor(0.0, device=sensitivity.values.device)
+        )
 
         sens_filename = (
             "sens"
             + (
-                "_MC_" + str(config_mlem["mc_samples"])
+                "_MC_" + str(config_mlem["mc_samples"]) 
                 if config_mlem["sensitivity_model"] == "like_system_matrix"
                 else "_geo"
             )
@@ -399,7 +424,7 @@ class LM_MLEM(object):
             + ".pth"
         )
         logger.info(
-            f"Sensitivity done, saving to {str(checkpoint_dir / sens_filename)}"
+            f"Sensitivity done, saving to {str(sens_dir / sens_filename)}"
         )
-        torch.save(sensitivity.values.cpu(), checkpoint_dir / sens_filename)
+        torch.save(sensitivity.values.cpu(), sens_dir / sens_filename)
         return sensitivity.values

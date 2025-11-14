@@ -13,7 +13,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import yaml
 
-from coresi.camera import setup_cameras
+from coresi.single_layer_camera import setup_single_layer_cameras
 from coresi.data import read_data_file
 from coresi.mlem import LM_MLEM
 from coresi.simulation import simulate
@@ -84,9 +84,10 @@ logger.info(f"Read configuration file {args.config}")
 
 
 # Setup the cameras' list according to their characteristics
-cameras = setup_cameras(config["cameras"])
+cameras = setup_single_layer_cameras(config["cameras"])
 
 checkpoint_dir = Path(config["lm_mlem"]["checkpoint_dir"])
+sens_dir = Path("sensitivity")
 checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -123,7 +124,7 @@ def run():
             cameras,
             mlem.SM_line,
             config["lm_mlem"],
-            checkpoint_dir,
+            sens_dir,
         )
         sys.exit(0)
 

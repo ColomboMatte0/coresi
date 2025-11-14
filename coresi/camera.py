@@ -27,6 +27,7 @@ class Material(StrEnum):
     Silicium = "Si"
     BismuthGermaniumOxide = "BGO"
     LanthanumBromide = "LaBr3"
+    LutetiumOxyorthosilicate = "LSO"
 
 
 class Camera(object):

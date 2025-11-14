@@ -5,7 +5,7 @@
 from logging import getLogger
 from pathlib import Path
 
-from coresi.camera import Camera
+from coresi.single_layer_camera import SingleLayerCamera as Camera
 from coresi.event import Event
 from coresi.point import Point
 
@@ -33,7 +33,7 @@ def read_data_file(
                 try:
                     event = Event(line_n, line, E0, volume_center, volume_dim, tol=tol)
                     # This links the event to the camera(s) in which it occurred
-                    event.set_camera_index(cameras)
+                    # event.set_camera_index(cameras)
                     events.append(event)
                 except ValueError as e:
                     skipped_events += 1
