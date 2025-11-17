@@ -52,6 +52,12 @@ parser.add_argument(
     action="store_true",
     help="Display the reconstructed image after the reconstruction",
 )
+parser.add_argument(
+    "--device",
+    choices=["cuda", "mps", "cpu"],
+    default=None,
+    help="Device to use for computation (default: auto-select cuda > mps > cpu)",
+)
 
 args = parser.parse_args()
 
@@ -117,6 +123,7 @@ def run():
             args.config.name.split(".")[0],
             config["E0"],
             config["energy_threshold"],
+            device=args.device,
         )
         _ = LM_MLEM.compute_sensitivity(
             config["E0"],
@@ -135,6 +142,7 @@ def run():
         args.config.name.split(".")[0],
         config["E0"],
         config["energy_threshold"],
+        device=args.device,
     )
     mlem.init_sensitivity(config["lm_mlem"], checkpoint_dir)
 
@@ -155,22 +163,32 @@ def run():
         volume_config=config["volume"],
     )
 
-    logger.info(f"Took {time.time() - start} ms to read the data")
+    logger.info(f"Took {time.time() - start:.2f} seconds to read the data")
 
     # Reinitialize the timer for MLEM
     start = time.time()
 
     logger.info("Doing MLEM")
 
+    # result = mlem.run_serial(
+    #     events,
+    #     config["lm_mlem"]["last_iter"],
+    #     config["lm_mlem"]["first_iter"],
+    #     config["lm_mlem"]["save_every"],
+    #     checkpoint_dir,
+    # )
     result = mlem.run(
-        events,
+            events,
         config["lm_mlem"]["last_iter"],
         config["lm_mlem"]["first_iter"],
         config["lm_mlem"]["save_every"],
         checkpoint_dir,
     )
 
-    logger.info(f"Took {time.time() - start} ms for MLEM")
+    elapsed = time.time() - start
+    n_iterations = config["lm_mlem"]["last_iter"] - config["lm_mlem"]["first_iter"] + 1
+    time_per_iter = elapsed / n_iterations if n_iterations > 0 else 0
+    logger.info(f"Took {elapsed:.2f} seconds for MLEM ({n_iterations} iterations, {time_per_iter:.2f} s/iter)")
 
     if args.display:
         for e in range(len(config["E0"])):

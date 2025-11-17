@@ -16,7 +16,7 @@ plt.set_loglevel("info")
 class Image:
     """docstring for Image"""
 
-    def __init__(self, n_energies: int, config: dict, init: str = "zeros"):
+    def __init__(self, n_energies: int, config: dict, init: str = "zeros", device: torch.device = None):
         super(Image, self).__init__()
         self.dim_in_voxels = Point(*config["n_voxels"])
         self.dim_in_cm = Point(*config["volume_dimensions"])
@@ -25,7 +25,15 @@ class Image:
         # Bottom left corner
         self.corner = self.center - (self.dim_in_cm / 2)
 
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # Use provided device or select automatically: CUDA > MPS > CPU
+        if device is not None:
+            self.device = device
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda:0")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
         self.n_energies = n_energies
         
         # Create cylindrical mask (inscribed circle in XY plane)

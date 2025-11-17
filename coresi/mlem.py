@@ -32,6 +32,7 @@ class LM_MLEM(object):
         run_name: str,
         energies: list[int],
         tol: float,
+        device: str = None,
     ):
         super(LM_MLEM, self).__init__()
 
@@ -42,7 +43,33 @@ class LM_MLEM(object):
 
         self.n_skipped_events = 0
         self.run_name = run_name
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        
+        # Device selection: use provided device or auto-detect (CUDA > MPS > CPU)
+        if device is not None:
+            if device == "cuda":
+                if torch.cuda.is_available():
+                    self.device = torch.device("cuda:0")
+                else:
+                    logger.warning("CUDA requested but not available, falling back to auto-select")
+                    device = None
+            elif device == "mps":
+                if torch.backends.mps.is_available():
+                    self.device = torch.device("mps")
+                else:
+                    logger.warning("MPS requested but not available, falling back to auto-select")
+                    device = None
+            elif device == "cpu":
+                self.device = torch.device("cpu")
+        
+        # Auto-detect if no device specified or fallback needed
+        if device is None:
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda:0")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
+        
         self.m_e = torch.tensor(
             511, dtype=torch.float, device=self.device
         )  # electron mass in EV
@@ -51,20 +78,28 @@ class LM_MLEM(object):
             logger.fatal("The configuration file has an empty E0 key")
             sys.exit(1)
 
-        logger.info(
-            f"Using device {'cpu (' + str(os.cpu_count()) +' cpu available)' if not torch.cuda.is_available() else torch.cuda.get_device_name(0)}"
-        )
+        # Log device information
+        if self.device.type == "cuda":
+            device_info = f"CUDA GPU: {torch.cuda.get_device_name(0)}"
+        elif self.device.type == "mps":
+            device_info = f"Apple Silicon GPU (MPS)"
+        else:
+            device_info = f"CPU ({os.cpu_count()} cores available)"
+        logger.info(f"Using device: {device_info}")
 
         self.config_volume = config_volume
-        self.line = Image(self.n_energies, self.config_volume)
-        sm_line_model = SM_Model(config_mlem, config_volume, cameras, energies, tol)
+        self.line = Image(self.n_energies, self.config_volume, device=self.device)
+        sm_line_model = SM_Model(config_mlem, config_volume, cameras, energies, tol, self.device)
+
 
         if self.cone_thickness == "parallel":
             if self.n_energies > 1 or config_mlem["force_spectral"]:
                 # Alias to avoid selecting the right algorithm in the run loop
                 self.SM_line = sm_line_model.SM_parallel_thickness_spectral
             else:
-                self.SM_line = sm_line_model.SM_parallel_thickness
+                self.SM_line = sm_line_model.SM_batch_parallel_thickness
+                # self.SM_line = sm_line_model.SM_parallel_thickness
+
         elif self.cone_thickness in ["angular", "angular_precise"]:
             if self.n_energies == 1 and not config_mlem["force_spectral"]:
                 self.SM_line = sm_line_model.SM_angular_thickness
@@ -74,8 +109,12 @@ class LM_MLEM(object):
                 self.SM_line = sm_line_model.SM_angular_thickness_spectral_precise
 
         logger.info(f"Using algorithm {self.SM_line.__name__}")
+        
+        # Batch size for processing events - tune this based on memory
+        self.batch_size = config_mlem.get("batch_size", 100)
+        logger.info(f"Using batch size: {self.batch_size} events")
 
-    def run(
+    def run_serial(
         self,
         events: list[Event],
         last_iter: int,
@@ -83,7 +122,7 @@ class LM_MLEM(object):
         save_every: int = 10,
         checkpoint_dir: Path = Path("checkpoints"),
     ):
-        """docstring for run"""
+        """Serial (non-batched) implementation of MLEM reconstruction"""
 
         if first_iter > last_iter:
             logger.fatal(
@@ -91,7 +130,7 @@ class LM_MLEM(object):
             )
             sys.exit(1)
         # Was lambda in C++ but lambda is a reserved keyword in Python
-        result = Image(self.n_energies, self.config_volume, init="ones")
+        result = Image(self.n_energies, self.config_volume, init="ones", device=self.device)
         result.values *= result.mask
 
         # Load a checkpoint if necessary
@@ -119,11 +158,12 @@ class LM_MLEM(object):
             del checkpoint
 
         # It must be initialized as zero as temporary values are sumed
-        next_result = Image(self.n_energies, self.config_volume, init="zeros")
+        next_result = Image(self.n_energies, self.config_volume, init="zeros", device=self.device)
 
         for iter in range(first_iter, last_iter + 1):
             logger.info(f"Iteration {str(iter)}")
             to_delete = []
+            
             for idx, event in enumerate(events):
                 try:
                     # Compute the system matrix line.
@@ -135,7 +175,6 @@ class LM_MLEM(object):
                     # This for the case of a first-iter different than 0.
                     line = self.SM_line(event, (iter - first_iter) == 0)
                     # Apply mask to line to avoid accumulating outside cylinder
-                    line.values = line.values
                 except ValueError as e:
                     logger.debug(f"Skipping event {event.id} REASON: {e}")
                     # Remove it from the list because we know we don't need to
@@ -143,7 +182,7 @@ class LM_MLEM(object):
                     to_delete.append(idx)
                     continue
 
-                # # Iteration 0 is a simple backprojection
+                # Iteration 0 is a simple backprojection
                 if iter == 0:
                     next_result.values += line.values
                 else:
@@ -155,13 +194,140 @@ class LM_MLEM(object):
                     
                     next_result.values += line.values / forward_proj
 
-
             if len(to_delete) > 0:
                 events = np.delete(events, to_delete)
                 logger.warning(
                     f"Skipped {str(len(to_delete))} events when computing the system matrix at iteration {str(iter)}"
                 )
                 self.n_skipped_events = len(to_delete)
+
+            # Do not take sensitivity into account at iteration 0
+            if iter == 0:
+                result.values = torch.where(
+                    result.mask,
+                    next_result.values,
+                    torch.tensor(0.0, device=result.values.device)
+                )
+            else:
+                # Apply sensitivity correction only inside the mask
+                result.values = torch.where(
+                    result.mask,
+                    (result.values / self.sensitivity.values) * next_result.values,
+                    torch.tensor(0.0, device=result.values.device)
+                )
+                
+            if self.tv is True:
+                for idx in range(self.n_energies):
+                    result.values[idx] = TV_dual_denoising(
+                        result.values[idx], self.sensitivity.values[idx], self.alpha_tv
+                    )
+
+            # It must be re-initialized as zero as temporary values are asumed
+            next_result.values = torch.zeros(
+                self.n_energies,
+                next_result.dim_in_voxels.x,
+                next_result.dim_in_voxels.y,
+                next_result.dim_in_voxels.z,
+                device=self.device,
+            )
+
+            if iter % save_every == 0 or iter == last_iter:
+                torch.save(
+                    result.values,
+                    checkpoint_dir / f"{self.run_name}.iter.{str(iter)}.npy",
+                )
+        return result
+
+    def run(
+        self,
+        events: list[Event],
+        last_iter: int,
+        first_iter: int = 0,
+        save_every: int = 10,
+        checkpoint_dir: Path = Path("checkpoints"),
+    ):
+        """Batched implementation of MLEM reconstruction"""
+
+        if first_iter > last_iter:
+            logger.fatal(
+                f"The first iteration should be less than the last iteration, first is {first_iter} and last is {last_iter}"
+            )
+            sys.exit(1)
+        # Was lambda in C++ but lambda is a reserved keyword in Python
+        result = Image(self.n_energies, self.config_volume, init="ones", device=self.device)
+        result.values *= result.mask
+
+        # Load a checkpoint if necessary
+        if first_iter > 0:
+            try:
+                logger.info(
+                    f"The first iteration is set to {str(first_iter)}, trying to load {checkpoint_dir / self.run_name}.iter.{str(first_iter - 1)}.npy"
+                )
+                checkpoint = torch.load(
+                    checkpoint_dir / f"{self.run_name}.iter.{str(first_iter - 1)}.npy"
+                )
+            except IOError as e:
+                logger.fatal(f"The checkpoint could not be loaded: {e}")
+                sys.exit(1)
+
+            if checkpoint.shape != result.values.shape:
+                logger.fatal(
+                    f"The checkpointed volume does not have the same shape as the current volume. Current volume is {str(result.values.shape)} and checkpointed volume  is {str(checkpoint.shape)}"
+                )
+                sys.exit(1)
+
+            result.values = checkpoint
+            # Delete the checkpoint as we no longer use it and this takes quite a
+            # bit of memory
+            del checkpoint
+
+        # It must be initialized as zero as temporary values are sumed
+        next_result = Image(self.n_energies, self.config_volume, init="zeros", device=self.device)
+
+        for iter in range(first_iter, last_iter + 1):
+            logger.info(f"Iteration {str(iter)}")
+            to_delete = []
+            
+            # Process events in batches
+            n_events = len(events)
+            for batch_start in range(0, n_events, self.batch_size):
+                batch_end = min(batch_start + self.batch_size, n_events)
+                batch_events = events[batch_start:batch_end]
+                
+                # Call batched system matrix method
+                # Returns tensor of shape (n_valid, n_energies, nx, ny, nz)
+                # where n_valid <= len(batch_events) if some events are filtered out
+                batch_lines_tensor = self.SM_line(batch_events, (iter - first_iter) == 0)
+                
+                # Check if any valid events remain after filtering
+                if batch_lines_tensor.shape[0] == 0:
+                    logger.warning(f"All {len(batch_events)} events in batch were invalid, skipping")
+                    continue
+                
+                # Iteration 0 is a simple backprojection
+                if iter == 0:
+                    # Sum over batch dimension to accumulate all events
+                    # batch_lines_tensor shape: (batch_size, n_energies, nx, ny, nz)
+                    # After sum(dim=0): (n_energies, nx, ny, nz)
+                    next_result.values += batch_lines_tensor.sum(dim=0)
+                else:
+                    # Vectorized forward projection for entire batch
+                    # forward_proj shape: (batch_size,)
+                    # Ensure result.values broadcasts correctly by adding batch dimension
+                    forward_proj = (batch_lines_tensor * result.values).sum(dim=(1, 2, 3, 4)) + 1e-3
+                    
+                    # Check for zero projections
+                    valid_mask = forward_proj > 0
+                    if not valid_mask.all():
+                        n_invalid = (~valid_mask).sum().item()
+                        logger.warning(f"Found {n_invalid} events with zero forward projection in batch, skipping them")
+                        batch_lines_tensor = batch_lines_tensor[valid_mask]
+                        forward_proj = forward_proj[valid_mask]
+                    
+                    # Vectorized backprojection: divide each line by its forward projection and sum
+                    # Reshape forward_proj to broadcast: (n_valid_events,1, 1, 1, 1)
+                    backprojection = (batch_lines_tensor / forward_proj.view(-1, 1, 1, 1, 1)).sum(dim=0)
+                    next_result.values += backprojection
 
             # Do not take sensitivity into account at iteration 0
             if iter == 0:
@@ -216,7 +382,7 @@ class LM_MLEM(object):
             )
             sys.exit(1)
         # Was lambda in C++ but lambda is a reserved keyword in Python
-        result = Image(self.n_energies, self.config_volume, init="ones")
+        result = Image(self.n_energies, self.config_volume, init="ones", device=self.device)
 
         # Load a checkpoint if necessary
         if first_iter > 0:
@@ -312,7 +478,7 @@ class LM_MLEM(object):
         return back_proj
 
     def init_sensitivity(self, config_mlem: dict, checkpoint_dir: Path) -> None:
-        self.sensitivity = Image(self.n_energies, self.config_volume, init="ones")
+        self.sensitivity = Image(self.n_energies, self.config_volume, init="ones", device=self.device)
         if (
             config_mlem["sensitivity"]
             and "sensitivity_file" in config_mlem
@@ -325,17 +491,14 @@ class LM_MLEM(object):
             if config_mlem["sensitivity_file"].split(".")[-1] in ["npy", "raw"]:
                 self.sensitivity.values = torch.from_numpy(
                     np.fromfile(config_mlem["sensitivity_file"])
-                ).reshape(self.sensitivity.values.shape)
+                ).reshape(self.sensitivity.values.shape).to(self.device)
 
-            # If the file was saved with torch.save
-            elif torch.cuda.is_available():
-                self.sensitivity.values = torch.load(
-                    config_mlem["sensitivity_file"]
-                ).to(self.device)
-            # If the sensitivity was computed from GPU but no GPU is available
+            # Load sensitivity file and move to the correct device
             else:
                 self.sensitivity.values = torch.load(
-                    config_mlem["sensitivity_file"], map_location=torch.device("cpu")
+                    config_mlem["sensitivity_file"],
+                    map_location=self.device,
+                    weights_only=True
                 )
             logger.info(self.sensitivity.values.size())
         else:

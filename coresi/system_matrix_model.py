@@ -28,6 +28,7 @@ class SM_Model(object):
         cameras: list[Camera],
         energies: list[int],
         tol: float,
+        device: torch.device,
     ):
         super(SM_Model, self).__init__()
 
@@ -66,7 +67,8 @@ class SM_Model(object):
 
         self.model = model
         self.cameras = cameras
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = device
+        
         self.m_e = torch.tensor(
             511, dtype=torch.float, device=self.device
         )  # electron mass in EV
@@ -78,12 +80,9 @@ class SM_Model(object):
             sys.exit(1)
 
         constants = self.read_constants("constants.yaml")
-        logger.info(
-            f"Using device {'cpu (' + str(os.cpu_count()) +' cpu available)' if not torch.cuda.is_available() else torch.cuda.get_device_name(0)}"
-        )
 
         self.config_volume = config_volume
-        self.line = Image(self.n_energies, self.config_volume)
+        self.line = Image(self.n_energies, self.config_volume, device=self.device)
 
         if self.cone_thickness == "parallel":
             self.sigma_beta = (
@@ -95,7 +94,8 @@ class SM_Model(object):
                 # Alias to avoid selecting the right algorithm in the run loop
                 self.SM_line = self.SM_parallel_thickness_spectral
             else:
-                self.SM_line = self.SM_parallel_thickness
+                self.SM_line = self.SM_batch_parallel_thickness
+                # self.SM_line = self.SM_parallel_thickness
         elif self.cone_thickness in ["angular", "angular_precise"]:
             # TODO: If E0 is unknown, we need to interpolate the values for each
             # event based on the known constants
@@ -1014,8 +1014,8 @@ class SM_Model(object):
             cos_theta_j = (
                 (camera_V1_Oz.x * (self.xx - event.V1.x))
                 + (camera_V1_Oz.y * (self.yy - event.V1.y))
-                + (camera_V1_Oz.z * (self.zz - event.V1.z)) / rho_j
-            )
+                + (camera_V1_Oz.z * (self.zz - event.V1.z))
+            ) / rho_j
             self.line.values *= self.model(cos_theta_j, rho_j)
         elif not self.do_nothing:
             self.line.values *= self.model(rho_j)
@@ -1033,12 +1033,146 @@ class SM_Model(object):
 
         # Ti is here i.e. the system matrix for an event i
         self.line.values[mask] = KN * self.line.values[mask]
-        self.line.values = torch.where(
-            self.line.mask,
-            self.line.values,
-            torch.tensor(0.0, device=self.line.values.device)
-        )
+        # self.line.values = torch.where(
+        #     self.line.mask,
+        #     self.line.values,
+        #     torch.tensor(0.0, device=self.line.values.device)
+        # )
         return self.line
+
+    def SM_batch_parallel_thickness(
+        self, events: list[Event], check_valid_events: bool = True
+    ) -> torch.Tensor:
+        """
+        Batched version of SM_parallel_thickness that processes multiple events simultaneously.
+        Returns a batched tensor of shape (batch_size, n_energies, nx, ny, nz).
+        """
+        batch_size = len(events)
+        if batch_size == 0:
+            return torch.empty(0, self.n_energies, *self.line.values.shape[1:], device=self.device)
+        
+        # Extract event properties into batched tensors - shape: (batch_size,)
+        V1_x = torch.tensor([event.V1.x for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)
+        V1_y = torch.tensor([event.V1.y for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)
+        V1_z = torch.tensor([event.V1.z for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)
+        
+        axis_x = torch.tensor([event.axis.x for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)
+        axis_y = torch.tensor([event.axis.y for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)
+        axis_z = torch.tensor([event.axis.z for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)
+        
+        cosbeta = torch.tensor([event.cosbeta for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)
+        sinbeta = torch.tensor([event.sinbeta for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)
+        E0 = torch.tensor([event.E0 for event in events], dtype=torch.float32, device=self.device).view(batch_size,self.n_energies, 1, 1, 1)    
+        
+        # Add singleton dimensions only when needed for broadcasting: (batch_size,) -> (batch_size, 1, 1, 1)
+        # Compute rho_j for all events
+        # self.xx, self.yy, self.zz have shape (nx, 1, 1), (1, ny, 1), (1, 1, nz)
+        rho_j = torch.sqrt(
+            (V1_x - self.xx) ** 2
+            + (V1_y - self.yy) ** 2
+            + (V1_z - self.zz) ** 2
+        )  # Shape: (batch_size, ,n_energies, nx, ny, nz)
+        
+        # Compute cos_delta_j for all events
+        cos_delta_j = (
+            axis_x * (self.xx - V1_x)
+            + axis_y * (self.yy - V1_y)
+            + axis_z * (self.zz - V1_z)
+        ) / rho_j
+        cos_delta_j = torch.clamp(cos_delta_j, min=-1.0, max=1.0)
+        
+        # Compute line values (distance from voxels to cone surface)
+        line_values = rho_j * torch.abs(
+            cosbeta * torch.sqrt(1 - cos_delta_j**2) - sinbeta * cos_delta_j
+        )
+        
+        # Apply cone thickness mask
+        mask = line_values > self.limit_sigma
+        line_values[mask] = 0.0
+        
+        # Track valid events and filter if needed
+        valid_mask = None
+        if check_valid_events:
+            # Check each event individually: valid = at least one voxel > 0
+            flat = line_values.view(batch_size, self.n_energies, -1)
+            valid_mask = torch.any(flat > 0, dim=2)  # Shape: (batch_size, n_energies)
+            
+            # An event is valid if any energy channel has non-zero voxels
+            valid_events = torch.any(valid_mask, dim=1)  # Shape: (batch_size,)
+            
+            n_invalid = (~valid_events).sum().item()
+            if n_invalid > 0:
+                logger.debug(f"Filtering out {n_invalid} invalid events (cone doesn't intersect volume)")
+                
+                # Filter all tensors to keep only valid events
+                line_values = line_values[valid_events]
+                V1_x = V1_x[valid_events]
+                V1_y = V1_y[valid_events]
+                V1_z = V1_z[valid_events]
+                axis_x = axis_x[valid_events]
+                axis_y = axis_y[valid_events]
+                axis_z = axis_z[valid_events]
+                cosbeta = cosbeta[valid_events]
+                sinbeta = sinbeta[valid_events]
+                E0 = E0[valid_events]
+                rho_j = rho_j[valid_events]
+                cos_delta_j = cos_delta_j[valid_events]
+                mask = mask[valid_events]
+                
+                # Update batch_size to reflect filtered events
+                batch_size = valid_events.sum().item()
+                
+                # Filter events list for camera access
+                events = [e for i, e in enumerate(events) if valid_events[i].item()]
+                
+                if batch_size == 0:
+                    return torch.empty(0, self.n_energies, *self.line.values.shape[1:], device=self.device)
+
+
+        # Zero out background in cos_delta_j (where mask is True, i.e., outside cone)
+        cos_delta_j[mask] = 0.0
+        camera_Oz_x = torch.tensor([self.cameras[e.idx_V1].Oz.x for e in events], 
+                           dtype=torch.float32, device=self.device).view(batch_size, self.n_energies, 1, 1, 1)
+
+        camera_Oz_y = torch.tensor([self.cameras[e.idx_V1].Oz.y for e in events], 
+                                dtype=torch.float32, device=self.device).view(batch_size, self.n_energies, 1, 1, 1)
+
+        camera_Oz_z = torch.tensor([self.cameras[e.idx_V1].Oz.z for e in events], 
+                                dtype=torch.float32, device=self.device).view(batch_size, self.n_energies, 1, 1, 1)
+                
+        # Apply Gaussian to cone interior
+        # Flip mask: now mask is True INSIDE cone, False outside
+        mask = ~mask
+        line_values[mask] = torch.exp(
+            -(line_values[mask] ** 2) * 0.5 / self.sigma_beta**2
+        )
+
+        
+        # Apply geometric model if needed
+        if self.compute_theta_j:
+            # Compute cos_theta_j for all events
+            # Need camera_V1_Oz for each event - this varies per event
+   
+            
+            cos_theta_j = (
+                (camera_Oz_x * (self.xx - V1_x))
+                + (camera_Oz_y * (self.yy - V1_y))
+                + (camera_Oz_z * (self.zz - V1_z))
+            ) / rho_j
+            line_values *= self.model(cos_theta_j, rho_j)
+        elif not self.do_nothing:
+            line_values *= self.model(rho_j)
+        
+        # Apply Klein-Nishina formula to all voxels (only affects non-zero line_values inside cone)
+        # Compute KN for all voxels - no indexing needed
+        KN = 1.0 / (1.0 + E0 / self.m_e * (1.0 - cos_delta_j))
+        KN = KN * (KN**2 + 1) + KN * KN * (-1.0 + cos_delta_j ** 2)
+        
+        # Apply KN correction: only affects voxels inside cone where line_values is non-zero
+        line_values = torch.where(mask, KN * line_values, line_values)
+        
+        # Return batched tensor directly
+        return line_values
 
     def SM_parallel_thickness_spectral(
         self, event: Event, check_valid_events: bool = True

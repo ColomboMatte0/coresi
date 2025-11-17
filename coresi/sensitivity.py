@@ -28,7 +28,7 @@ def block(
     x: torch.Tensor,
     y: torch.Tensor,
     z: torch.Tensor,
-    n_subdivisions: int = 2,
+    n_subdivisions: int = 3,
 ):
     """The sensitivity is the solid angle of scatterer bounding box
     
