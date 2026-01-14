@@ -16,7 +16,7 @@ plt.set_loglevel("info")
 class Image:
     """docstring for Image"""
 
-    def __init__(self, n_energies: int, config: dict, init: str = "zeros", device: torch.device = None):
+    def __init__(self, config: dict,device:torch.device, init: str = "zeros"):
         super(Image, self).__init__()
         self.dim_in_voxels = Point(*config["n_voxels"])
         self.dim_in_cm = Point(*config["volume_dimensions"])
@@ -24,17 +24,7 @@ class Image:
         self.center = Point(*config["volume_centre"])
         # Bottom left corner
         self.corner = self.center - (self.dim_in_cm / 2)
-
-        # Use provided device or select automatically: CUDA > MPS > CPU
-        if device is not None:
-            self.device = device
-        elif torch.cuda.is_available():
-            self.device = torch.device("cuda:0")
-        elif torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
-        self.n_energies = n_energies
+        self.device = device
         
         # Create cylindrical mask (inscribed circle in XY plane)
         self.mask = self.set_mask()
@@ -42,7 +32,6 @@ class Image:
         # Contains the actual values of the image
         if init == "zeros":
             self.values = torch.zeros(
-                self.n_energies,
                 int(self.dim_in_voxels.x),
                 int(self.dim_in_voxels.y),
                 int(self.dim_in_voxels.z),
@@ -50,12 +39,15 @@ class Image:
             )
         if init == "ones":
             self.values = torch.ones(
-                self.n_energies,
                 int(self.dim_in_voxels.x),
                 int(self.dim_in_voxels.y),
                 int(self.dim_in_voxels.z),
                 device=self.device,
             )
+            self.values[~self.mask] = 0.0
+            
+            
+      
 
     def set_mask(self):
         """
@@ -89,13 +81,13 @@ class Image:
         X, Y = torch.meshgrid(x, y, indexing='ij')
         
         # Radius of inscribed circle (smaller of the two dimensions)
-        radius = min(self.dim_in_cm.x, self.dim_in_cm.y) / 2
+        radius = min(self.dim_in_cm.x, self.dim_in_cm.y) / 2 - self.voxel_size.x / 2
         
         # Calculate distance from center for each point in XY plane
         distance = torch.sqrt((X - self.center.x)**2 + (Y - self.center.y)**2)
         
         # Create 2D circular mask as boolean (True inside circle, False outside)
-        mask_2d = distance <= radius
+        mask_2d = distance < radius
         
         # Expand to 3D cylinder (same mask for all Z slices)
         mask_3d = mask_2d.unsqueeze(2).expand(nx, ny, nz).contiguous()
@@ -105,7 +97,6 @@ class Image:
 
     def set_to_zeros(self):
         self.values = torch.zeros(
-            self.n_energies,
             int(self.dim_in_voxels.x),
             int(self.dim_in_voxels.y),
             int(self.dim_in_voxels.z),
@@ -121,7 +112,6 @@ class Image:
         mappable = ax.imshow(
             self.values[energy, slice, :, :].T.cpu(),
             origin="lower",
-            # TODO documentj extent and fix centering
             extent=[
                 self.center.y - self.dim_in_cm.y / 2,
                 self.center.y + self.dim_in_cm.y / 2,

@@ -1,26 +1,18 @@
 # SPDX-FileCopyrightText: 2024 Vincent Lequertier <vincent@vl8r.eu>, Voichita Maxim <voichita.maxim@creatis.insa-lyon.fr>
 #
 # SPDX-License-Identifier: MIT
-
-# data_file: CC_CLARYS_7P_IECPhantom_Cylinders_4Energies_t5000s_Ideal_140keVPeak.dat
-data_file: data/test.csv
-data_type: 'GATE'
 log_dir: 'logs'
-# Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
-# E0: [140, 245, 364, 511]
-E0: [511]
-remove_out_of_range_energies: False
-# Only needed if E0 is unknown and remove_out_of_range_energies is True, ignored
-# otherwise
-energy_range: [120, 150]
-# Ethres = 5 pour données idéales, Ethres = 50 pour resolution finie des d
-# tecteurs.
-# (valeurs Enrique, mais devrait être choisi en fonction de la résolution
-# des détecteurs)
-energy_threshold: 5
-n_events: 100000
-starts_at: 1
 
+data:
+  file_name: D:\Matteo\LM_data\line_0-8cm_511keV_1MBqx1s_LM.h5
+  enable_event_filtering: False
+  max_ARM_sigma: 0.1
+  data_type: 'HDF5'
+  # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
+  # E0: [140, 245, 364, 511]
+  E0: 511
+  n_events: 2_000_000
+  starts_at: 0
 
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 cameras:
@@ -28,7 +20,7 @@ cameras:
     # Cameras scatterer have the same characteristics besides their positions
   common_attributes:
     material: LSO
-    size: [5.1, 5.1, 2.0]
+    size: [5.113, 5.113, 2.0]
     frame_origin: [0,0,0]
   
     # Sector 0: 0° (on +X axis)
@@ -38,7 +30,7 @@ cameras:
     Oz: [-1, 0, 0]          # Normal (inward)
     center: [10, 0, 0]   # Detector center in world coords
 
-  # Sector 1: 30°
+  # # # Sector 1: 30°
   position_1:
     Ox: [0, 0, 1]
     Oy: [-0.5, 0.866, 0]
@@ -73,14 +65,14 @@ cameras:
     Oz: [0.866, -0.5, 0]
     center: [-8.66, 5, 0]
 
-  # Sector 6: 180° (on -X axis)
+  # # Sector 6: 180° (on -X axis)
   position_6:
     Ox: [0, 0, 1]
     Oy: [0, -1, 0]
     Oz: [1, 0, 0]
     center: [-10, 0, 0]
 
-  # Sector 7: 210°
+  # # Sector 7: 210°
   position_7:
     Ox: [0, 0, 1]
     Oy: [0.5, -0.866, 0]
@@ -116,12 +108,8 @@ cameras:
     center: [8.66, -5, 0]
 
 volume:
-  volume_dimensions: [18.5, 18.5, 5.5] # In centimeters
-  n_voxels: [37, 37, 11]
-  # volume_dimensions: [20.25, 20.25, 0.25] # In centimeters
-  # n_voxels: [81,81,1]
-  # volume_dimensions: [20,20,0.4] # In centimeters
-  # n_voxels: [50,50,1]
+  volume_dimensions: [18.5, 18.5, 6.5] # In centimeters
+  n_voxels: [37, 37, 13]
   volume_centre: [0, 0, 0]
 
 simulation:
@@ -133,23 +121,41 @@ simulation:
   visualize_generated_source: True
   angle_threshold: 5 # In degrees. It's hard to compute the exact V2 (second hit in the absorber) that corresponds to the randomly chosen angle. So draw candidates and pick one that loosely match the angle according to this threshold
 
-lm_mlem:
-  cone_thickness: 'parallel' # angular or parallel
-  last_iter: 5
+sensitivity:
+  sub_N: [32,32,10]  # Number of subdivisions per detector for sensitivity calculation
+  sensitivity_model: solid_angle
+  include_attenuation: True
+  save_dir: sensitivity
+  # file_name: sens_solid_angle_vol_18_18_6_subN_32_32_10_Attn_True_no_compt.pth
+  file_name: 
+
+lm_algo:
+  first_iter: 1
+  last_iter: 200
+  save_every: 5
+  OSEM_n_subsets: 10
+  batch_size: 10000 # Number of events to process in parallel
+
+  cone_thickness: 'doppler' 
   model: 'cos1rho2' # Either cos0rho0, cos0rho2 or cos1rho2. Use cos0rho0 if sensitivity is disabled.
-  first_iter: 0
-  batch_size: 1000 # Number of events to process in parallel
-  save_every: 1
-  checkpoint_dir: recons/test
-  # force sperctral algorithm even if there is only one energy
+  use_attnuation: False
+
+  # save_dir: recons/center1_511keV_doppler_attn_True
+  save_dir: recons/line_0-8cm_511keV_arm_sens_attn
+  # save_dir: recons/test_camera0
+
   force_spectral: false
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
+  maximum_cone_thickness: 0.5 # In radians, set the cone to zero in arm mode
   width_factor: 1 # Used to artificially modify the spread of the cone
-  sensitivity: true
-  sensitivity_model: solid_angle  #from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
+
+  use_sensitivity: True
+  #from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
   mc_samples: 1
   tv: false
   alpha_tv: 0.000
-  # Supply a sensitivity file. Needs to have the same size as the number of
-  # voxels in the volume
-  sensitivity_file: sensitivity/sens_geoparallel.pth
+
+  sensitivity_file: sensitivity/sens_solid_angle_vol_18.5_18.5_6.5_subN_32_32_10_Attn_True.pth
+  # sensitivity_file: sensitivity/sens_solid_angle_vol_18.5_18.5_6.5_subN_32_32_10_Attn_False.pth
+  # sensitivity_file: sensitivity/sens_no_compt.pth
+  # sensitivity_file: sensitivity/sens_camera1.pth

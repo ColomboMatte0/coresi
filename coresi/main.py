@@ -4,6 +4,7 @@
 
 import argparse
 import logging
+import os
 import socket
 import sys
 import time
@@ -12,18 +13,16 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import yaml
+import torch
 
 from coresi.single_layer_camera import setup_single_layer_cameras
-from coresi.data import read_data_file
-from coresi.mlem import LM_MLEM
-from coresi.simulation import simulate
+from coresi.Events import Events
+from coresi.algorithm import Algorithm
 
 parser = argparse.ArgumentParser(
     description="CORESI - Code for Compton camera image reconstruction (default action)",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
-
-
 parser.add_argument(
     "-v",
     "--verbose",
@@ -55,19 +54,25 @@ parser.add_argument(
 parser.add_argument(
     "--device",
     choices=["cuda", "mps", "cpu"],
-    default=None,
-    help="Device to use for computation (default: auto-select cuda > mps > cpu)",
+    default="cpu",
+    help="Device to use for computation",
 )
 
 args = parser.parse_args()
 
+logger = logging.getLogger("CORESI")
 
 try:
     with open(args.config, "r") as fh:
         config = yaml.safe_load(fh)
 except IOError as e:
-    print(f"Failed to open the configuration file: {e}")
-    sys.exit(1)
+    logger.error(f"Failed to open the configuration file: {e}")
+
+try:
+    with open("constants.yaml", "r") as fh:
+        constants = yaml.safe_load(fh)
+except IOError as e:
+    logger.error(f"Failed to open the constants file: {e}")
 
 
 job_name = environ["PBS_JOBID"] if "PBS_JOBID" in environ else "local"
@@ -84,117 +89,65 @@ logging.basicConfig(
     handlers=handlers,
 )
 
-logger = logging.getLogger("CORESI")
+if args.device== "cuda":
+    device_info = f"CUDA GPU: {torch.cuda.get_device_name(0)}"
+elif args.device == "mps":
+    device_info = f"Apple Silicon GPU (MPS)"
+else:
+    device_info = f"CPU ({os.cpu_count()} cores available)"
+logger.info(f"Using device: {device_info}")
+
+
 logger.info(f"Starting job {job_name} on {socket.gethostname()}")
 logger.info(f"Read configuration file {args.config}")
 
-
-# Setup the cameras' list according to their characteristics
 cameras = setup_single_layer_cameras(config["cameras"])
-
-checkpoint_dir = Path(config["lm_mlem"]["checkpoint_dir"])
-sens_dir = Path("sensitivity")
-checkpoint_dir.mkdir(parents=True, exist_ok=True)
-
+sens_save_dir = Path(config["sensitivity"]["save_dir"])
 
 def run():
-    start = time.time()
-    if args.simulation:
-        lines = simulate(
-            config["simulation"]["phantom"],
-            config,
-            cameras,
-            config["simulation"]["n_events"],
-            config["E0"][0],
-            config["simulation"]["n_V2"],
-            visualize_generated_source=config["simulation"][
-                "visualize_generated_source"
-            ],
-            angle_threshold=config["simulation"]["angle_threshold"],
-        )
-        with open(config["simulation"]["output_file"], "w") as fh:
-            fh.write(lines)
-        sys.exit(0)
-    if args.sensitivity:
-        mlem = LM_MLEM(
-            config["lm_mlem"],
-            config["volume"],
-            cameras,
-            args.config.name.split(".")[0],
-            config["E0"],
-            config["energy_threshold"],
-            device=args.device,
-        )
-        _ = LM_MLEM.compute_sensitivity(
-            config["E0"],
-            config["volume"],
-            cameras,
-            mlem.SM_line,
-            config["lm_mlem"],
-            sens_dir,
-        )
-        sys.exit(0)
 
-    mlem = LM_MLEM(
-        config["lm_mlem"],
+    reco = Algorithm(
+        config["lm_algo"],
         config["volume"],
         cameras,
         args.config.name.split(".")[0],
-        config["E0"],
-        config["energy_threshold"],
-        device=args.device,
-    )
-    mlem.init_sensitivity(config["lm_mlem"], checkpoint_dir)
-
-    logger.info(f"Processing {config['data_file']}")
-
-    # Process events from the data file and associate them with the cameras
-    events = read_data_file(
-        Path(config["data_file"]),
-        n_events=config["n_events"],
-        E0=config["E0"],
-        cameras=cameras,
-        # Needed to remove events with energy outside of a given range
-        remove_out_of_range_energies=config["remove_out_of_range_energies"],
-        energy_range=config["energy_range"],
-        start_position=config["starts_at"],
-        tol=config["energy_threshold"],
-        # Used to determine if hit is in volume
-        volume_config=config["volume"],
+        config["data"]["E0"],
+        args.device,
     )
 
-    logger.info(f"Took {time.time() - start:.2f} seconds to read the data")
+    if args.sensitivity:
+        _ = reco.compute_sensitivity(
+            config["data"]["E0"],
+            config["volume"],
+            cameras,
+            config["sensitivity"],
+            args.device,
+        )
+        sys.exit(0)
 
-    # Reinitialize the timer for MLEM
-    start = time.time()
+    reco.init_sensitivity()
+    
+    events = Events(config["data"],
+                    constants,
+                    args.device, 
+                    cameras)
 
-    logger.info("Doing MLEM")
-
-    # result = mlem.run_serial(
-    #     events,
-    #     config["lm_mlem"]["last_iter"],
-    #     config["lm_mlem"]["first_iter"],
-    #     config["lm_mlem"]["save_every"],
-    #     checkpoint_dir,
-    # )
-    result = mlem.run(
-            events,
-        config["lm_mlem"]["last_iter"],
-        config["lm_mlem"]["first_iter"],
-        config["lm_mlem"]["save_every"],
-        checkpoint_dir,
-    )
-
-    elapsed = time.time() - start
-    n_iterations = config["lm_mlem"]["last_iter"] - config["lm_mlem"]["first_iter"] + 1
-    time_per_iter = elapsed / n_iterations if n_iterations > 0 else 0
-    logger.info(f"Took {elapsed:.2f} seconds for MLEM ({n_iterations} iterations, {time_per_iter:.2f} s/iter)")
+    result = reco.run_OSEM(events)
 
     if args.display:
-        for e in range(len(config["E0"])):
-            result.display_z(energy=e, title=f"{str(config['E0'][e])} keV")
+        for e in range(len(config["data"]["E0"])):
+            result.display_z(energy=e, title=f"{str(config['data']['E0'][e])} keV")
     plt.show()
-
 
 if __name__ == "__main__":
     run()
+
+# if __name__ == "__main__":
+#     with torch.profiler.profile(
+#         activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA],
+#         record_shapes=True,
+#         profile_memory=True,
+#         with_stack=True
+#     ) as prof:
+#         run()
+#     print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=30))

@@ -39,38 +39,33 @@ class SingleLayerCamera(object):
     - Same physics (Klein-Nishina, NIST cross-sections)
     """
 
-    def __init__(self, attrs: dict, position: dict):
+    def __init__(self, comm_attrs: dict, position: dict):
         super(SingleLayerCamera, self).__init__()
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
         # Single material for both scattering and absorption
-        self.material = attrs["material"]
-        
-        # Physics constants
+        self.material = Material(comm_attrs["material"])
         self.avogadro, self.m_e, self.r_e = self.get_physics_constants()
         
         # Load material properties
         constants_material = self.read_constants_material(self.material)
+        
         self.nist = torch.tensor(constants_material.pop("NIST"), device=self.device)
         self.nist_slice = self.nist[:, 0].contiguous()
         self.n_eff = self.get_n_eff(**constants_material)
         self.density = constants_material["density"]
         
-        logger.info(f"Single-layer camera with material: {self.material}")
-        logger.info(f"Density: {self.density} g/cm³, n_eff: {self.n_eff:.2e} electrons/cm³")
-        
-
         self.centre = Point(*position["center"])
 
         logger.debug(f"Detector centre: {self.centre}")
         
 
-        self.dim = Point(*attrs["size"])
+        self.dim = Point(*comm_attrs["size"])
         logger.debug(f"Detector dimensions: {self.dim}")
         
         # Reference frame
-        self.origin = Point(*attrs["frame_origin"])
+        self.origin = Point(*comm_attrs["frame_origin"])
         self.Ox = Point(*position["Ox"]).normalized()
         self.Oy = Point(*position["Oy"]).normalized()
         self.Oz = Point(*position["Oz"]).normalized()
@@ -98,6 +93,63 @@ class SingleLayerCamera(object):
         """effective number density of electrons in mol*cm^-3"""
         return eff * density * self.avogadro / moll_mass
 
+    def get_incoherent_diff_xsection(
+        self, energy: int | torch.Tensor
+        ) -> float:
+        table_index, nist_table = self.get_table_and_index(energy)
+        if isinstance(energy, float):
+            return nist_table[table_index][1] + (
+                nist_table[table_index + 1][1] - nist_table[table_index][1]
+            ) * ((energy / 1000) - nist_table[table_index][0]) / (
+                nist_table[table_index + 1][0] - nist_table[table_index][0]
+            )
+        else:
+            return nist_table[table_index, 1] + (
+                nist_table[table_index + 1, 1] - nist_table[table_index, 1]
+            ) * ((energy / 1000) - nist_table[table_index, 0]) / (
+                nist_table[table_index + 1, 0] - nist_table[table_index, 0]
+            )
+    
+    def get_total_diff_xsection(
+        self, energy: int | torch.Tensor
+    ) -> float:
+        table_index, nist_table = self.get_table_and_index(energy)
+        if isinstance(energy, float):
+            return nist_table[table_index][4] + (
+                nist_table[table_index + 1][4] - nist_table[table_index][4]
+            ) * ((energy / 1000) - nist_table[table_index][0]) / (
+                nist_table[table_index + 1][0] - nist_table[table_index][0]
+            )
+        else:
+            return nist_table[table_index, 4] + (
+                nist_table[table_index + 1, 4] - nist_table[table_index, 4]
+            ) * ((energy / 1000) - nist_table[table_index, 0]) / (
+                nist_table[table_index + 1, 0] - nist_table[table_index, 0]
+            )
+
+    def get_table_and_index(
+        self, energy: float
+    ) -> tuple[int, torch.Tensor]:
+        # Convert to MeV
+        # Divide this way to avoid modifying by reference
+        energy = energy / 1000
+
+        if (isinstance(energy, float) and energy < self.nist[0][0]) or (
+            not isinstance(energy, float) and energy.min() < self.nist[0][0]
+        ):
+            logger.fatal(
+                f"Table index energy of {str(energy)} below minimum in NIST table"
+            )
+            sys.exit(1)
+        elif (isinstance(energy, float) and energy > self.nist[49][0]) or (
+            not isinstance(energy, float) and energy.max() > self.nist[49][0]
+        ):
+            logger.fatal(
+                f"Table index energy of {str(energy)} above maximum in NIST table = {str(self.nist[49][0])}"
+            )
+            sys.exit(1)
+        return torch.searchsorted(self.nist_slice, energy) - 1, self.nist
+
 
 def setup_single_layer_cameras(config_cameras: dict) -> list[SingleLayerCamera]:
     """
@@ -116,5 +168,6 @@ def setup_single_layer_cameras(config_cameras: dict) -> list[SingleLayerCamera]:
         )
         for camera_idx in range(int(config_cameras["n_cameras"]))
     ]
-    logger.info(f"Created {len(cameras)} single-layer camera(s)")
+    logger.info(f"Created {len(cameras)} single-layer camera(s) with material {cameras[0].material}")
     return cameras
+
