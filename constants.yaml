@@ -11,12 +11,10 @@ doppler_broadening:
   C_LSO: 0.054
 energy_resolutions:
   energy_511:
-    sigma_E: 0 # keV
+    sigma_E: 10 # keV
 spatial_resolutions:
   sigma_planar: 0.35 # mm
   sigma_DOI: 1.3 # mm
-
-
 
 # [0]Photon Energy
 # [1]Incoherent Scattering (compton)

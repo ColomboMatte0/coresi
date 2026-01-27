@@ -4,20 +4,19 @@
 log_dir: 'logs'
 
 data:
-  file_name: D:\Matteo\LM_data\line_0-8cm_511keV_1MBqx1s_LM.h5
-  enable_event_filtering: False
-  max_ARM_sigma: 0.1
+  file_name: D:\Matteo\LM_data\line_-6_6cm3_511keV_10MBqx1s_noise10keV_LM.h5
+  max_ARM_sigma: 0.12
   data_type: 'HDF5'
   # Energy of the source. If set to -1 the gamma energy is the deposited energy i.e. E1 + E2
   # E0: [140, 245, 364, 511]
   E0: 511
-  n_events: 2_000_000
+  n_events: 500_000
   starts_at: 0
 
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 cameras:
   n_cameras: 12
-    # Cameras scatterer have the same characteristics besides their positions
+  # Cameras scatterer have the same characteristics besides their positions
   common_attributes:
     material: LSO
     size: [5.113, 5.113, 2.0]
@@ -30,7 +29,7 @@ cameras:
     Oz: [-1, 0, 0]          # Normal (inward)
     center: [10, 0, 0]   # Detector center in world coords
 
-  # # # Sector 1: 30°
+  # Sector 1: 30°
   position_1:
     Ox: [0, 0, 1]
     Oy: [-0.5, 0.866, 0]
@@ -51,7 +50,7 @@ cameras:
     Oz: [0, -1, 0]
     center: [0, 10, 0]
 
-  # # Sector 4: 120°
+  # Sector 4: 120°
   position_4:
     Ox: [0, 0, 1]
     Oy: [-0.866, -0.5, 0]
@@ -65,14 +64,14 @@ cameras:
     Oz: [0.866, -0.5, 0]
     center: [-8.66, 5, 0]
 
-  # # Sector 6: 180° (on -X axis)
+  # Sector 6: 180° (on -X axis)
   position_6:
     Ox: [0, 0, 1]
     Oy: [0, -1, 0]
     Oz: [1, 0, 0]
     center: [-10, 0, 0]
 
-  # # Sector 7: 210°
+  # Sector 7: 210°
   position_7:
     Ox: [0, 0, 1]
     Oy: [0.5, -0.866, 0]
@@ -108,54 +107,44 @@ cameras:
     center: [8.66, -5, 0]
 
 volume:
-  volume_dimensions: [18.5, 18.5, 6.5] # In centimeters
-  n_voxels: [37, 37, 13]
+  # volume_dimensions: [18.5, 18.5, 6.5] # In centimeters
+  # n_voxels: [37, 37, 13]
+  volume_dimensions: [16.2, 16.2, 3.2] # In centimeters
+  n_voxels: [81, 81, 16]
   volume_centre: [0, 0, 0]
 
-simulation:
-  n_events: 20000
-  # n_events: 20
-  n_V2: 100   # samples of V2 positions
-  phantom: phantom.pth
-  output_file: simulation.raw
-  visualize_generated_source: True
-  angle_threshold: 5 # In degrees. It's hard to compute the exact V2 (second hit in the absorber) that corresponds to the randomly chosen angle. So draw candidates and pick one that loosely match the angle according to this threshold
-
 sensitivity:
-  sub_N: [32,32,10]  # Number of subdivisions per detector for sensitivity calculation
-  sensitivity_model: solid_angle
-  include_attenuation: True
+  sub_N: [10,10,10]  # Number of subdivisions per detector for sensitivity calculation
+  # sensitivity_model: solid_angle
+  sensitivity_model: fake_list_mode
+  sub_E: 20  # Energy splitting step in keV
+  output_hdf5: sensitivity/test_sens.h5
+  include_attenuation: 0
   save_dir: sensitivity
   # file_name: sens_solid_angle_vol_18_18_6_subN_32_32_10_Attn_True_no_compt.pth
-  file_name: 
+  file_name:
 
 lm_algo:
   first_iter: 1
-  last_iter: 200
+  last_iter: 500
   save_every: 5
   OSEM_n_subsets: 10
   batch_size: 10000 # Number of events to process in parallel
 
-  cone_thickness: 'doppler' 
+  cone_thickness: 'arm' #Either 'arm' or 'par'
   model: 'cos1rho2' # Either cos0rho0, cos0rho2 or cos1rho2. Use cos0rho0 if sensitivity is disabled.
-  use_attnuation: False
+  use_attenuation: 0
 
-  # save_dir: recons/center1_511keV_doppler_attn_True
-  save_dir: recons/line_0-8cm_511keV_arm_sens_attn
-  # save_dir: recons/test_camera0
-
-  force_spectral: false
+  save_dir: recons
+  # save_file: test
   n_sigma: 2 # Skip the Gaussian above n_sigma * Gaussian std
   maximum_cone_thickness: 0.5 # In radians, set the cone to zero in arm mode
   width_factor: 1 # Used to artificially modify the spread of the cone
 
-  use_sensitivity: True
-  #from less precise to more precise: solid_angle, solid_angle_with_attn, like_system_matrix
-  mc_samples: 1
+  use_sensitivity: 1
+  sensitivity_file: sensitivity/sens_solid_angle_shape_37_37_13_subN_32_32_10_Attn_0.pth
+  # sensitivity_file: sensitivity/sens_solid_angle_vol_10.1_10.1_2.1_subN_32_32_10_Attn_0.pth
+
   tv: false
   alpha_tv: 0.000
-
-  sensitivity_file: sensitivity/sens_solid_angle_vol_18.5_18.5_6.5_subN_32_32_10_Attn_True.pth
-  # sensitivity_file: sensitivity/sens_solid_angle_vol_18.5_18.5_6.5_subN_32_32_10_Attn_False.pth
-  # sensitivity_file: sensitivity/sens_no_compt.pth
-  # sensitivity_file: sensitivity/sens_camera1.pth
+ 

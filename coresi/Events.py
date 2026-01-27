@@ -72,10 +72,8 @@ class Events:
         self.inv_sigma_total_sq = torch.reciprocal(sigma_total**2)
         self.inv_sigma_total = torch.reciprocal(sigma_total)
 
-        if data_config["enable_event_filtering"]:
-
-            logger.info("Filtering out events with ARM > 0.1 rad")
-            self.filter_events(sigma_total=sigma_total,max_ARM=0.1)
+        if data_config["max_ARM_sigma"] != 0:
+            self.filter_events(sigma_total=sigma_total,max_ARM=data_config['max_ARM_sigma'])
 
         self.n_events = len(self.V1) 
         logger.info(f"Loaded {self.n_events:.2e} events from {data_config['file_name']}")
@@ -90,7 +88,6 @@ class Events:
         logger.info(f"Memory usage: {total_bytes / 1024 / 1024:.2f} MB")
         logger.info(f"Took {time.time() - start:.2f} seconds to read and preprocess data")
 
-    #TODO load directly from config file?
     def get_camera_axis(self,
                         Rsector: torch.Tensor,
                         cameras: list[Camera]) -> torch.Tensor:
@@ -117,31 +114,6 @@ class Events:
         camera_centers = camera_center_table[Rsector] # shape: [N, 3]
         res = torch.sum( (camera_centers/camera_centers.norm(dim=1, keepdim=True)) *
                           (self.V1 - camera_centers), dim=1)  # shape: [N,]
-
-        # n_cameras = len(cameras)
-        # logger.info("="*60)
-        # logger.info("DEPTH_Z STATISTICS PER CAMERA")
-        # logger.info("="*60)
-
-        # for cam_idx in range(n_cameras):
-        #     mask = Rsector == cam_idx
-        #     n_events = mask.sum().item()
-            
-        #     if n_events > 0:
-        #         depth_cam = res[mask]
-        #         logger.info(f"Camera {cam_idx:2d} ({n_events:6d} events): "
-        #                 f"min={depth_cam.min().item():7.2f} cm, "
-        #                 f"max={depth_cam.max().item():7.2f} cm, "
-        #                 f"mean={depth_cam.mean().item():7.2f} cm")
-        
-        # # Overall statistics
-        # logger.info("-"*60)
-        # logger.info(f"Overall     ({len(res):6d} events): "
-        #         f"min={res.min().item():7.2f} cm, "
-        #         f"max={res.max().item():7.2f} cm, "
-        #         f"mean={res.mean().item():7.2f} cm")
-        # logger.info("="*60)
-
         return res
 
 
@@ -196,6 +168,7 @@ class Events:
     
     def filter_events(self, sigma_total,max_ARM: float):
         """Filter out events with ARM greater than max_ARM."""
+        logger.info(f"Filtering out events with ARM > {max_ARM}  rad")
         mask = sigma_total <= max_ARM
         self.V1 = self.V1[mask].contiguous()
         self.V2 = self.V2[mask].contiguous()
@@ -208,6 +181,9 @@ class Events:
         self.depth_z = self.depth_z[mask].contiguous()
         self.inv_sigma_total_sq = self.inv_sigma_total_sq[mask].contiguous()
         self.inv_sigma_total = self.inv_sigma_total[mask].contiguous()
+        if len(self.V1) == 0:
+            logger.fatal("All events were filtered out. Adjust max_ARM_sigma parameter.")
+            sys.exit(1)
 
     def modify_views(self):
         self.V1 = self.V1.view(-1, 3, 1, 1, 1)       # [N, 3, 1, 1, 1]

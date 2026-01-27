@@ -79,7 +79,7 @@ class SM_Model(object):
         self.config_volume = config_volume
         self.line = Image(self.config_volume, device=self.device)
 
-        if self.cone_thickness == "parallel":
+        if self.cone_thickness == "par":
             self.sigma_beta = (
                 self.line.voxel_size.norm2() * config_mlem["width_factor"] / 2
             )
@@ -87,7 +87,7 @@ class SM_Model(object):
             self.limit_sigma = self.sigma_beta * config_mlem["n_sigma"]
             self.SM_line = self.SM_parallel_thickness
             # self.SM_line = self.SM_parallel_thickness
-        elif self.cone_thickness == "doppler":
+        elif self.cone_thickness == "arm":
             self.limit_arm =  config_mlem["maximum_cone_thickness"]
             self.SM_line = self.SM_arm
 
@@ -182,13 +182,13 @@ class SM_Model(object):
             # torch.save(mean_attn_volume.cpu(), 'sensitivity/attn_mean_volume.pth')
             # print(f"Saved mean attenuation volume with shape {mean_attn_volume.shape}")
             
-            line_values *= (
-                self.model(cos_theta_j, inv_rho_j) * 
-                attn
-            )
-            # line_values *= self.model(cos_theta_j, inv_rho_j)
+            # line_values *= (
+            #     self.model(cos_theta_j, inv_rho_j) * 
+            #     attn
+            # )
+            line_values *= self.model(cos_theta_j, inv_rho_j)
         elif not self.do_nothing:
-            self.line.values *= self.model(inv_rho_j)
+            line_values *= self.model(inv_rho_j)
 
         return line_values * KN * inner_mask.float()
 

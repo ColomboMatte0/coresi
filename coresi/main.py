@@ -110,7 +110,7 @@ def run():
         config["lm_algo"],
         config["volume"],
         cameras,
-        args.config.name.split(".")[0],
+        config["data"],
         config["data"]["E0"],
         args.device,
     )

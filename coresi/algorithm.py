@@ -28,7 +28,7 @@ class Algorithm(object):
         config_algo: dict,
         config_volume: dict,
         cameras: list[Camera],
-        run_name: str,
+        data_config: dict,
         E_0: float,
         device: torch.device
     ):
@@ -36,8 +36,7 @@ class Algorithm(object):
 
         self.device = device
         self.config_algo = config_algo
-
-        self.run_name = run_name
+        self.data_config = data_config
         
         self.m_e = torch.tensor(
             511, dtype=torch.float, device=self.device
@@ -59,7 +58,7 @@ class Algorithm(object):
     ):
         logger.info(f"Using events batch size: {self.config_algo['batch_size']} events")
         logger.info(f"OSEM with {self.config_algo['OSEM_n_subsets']} subsets")
-        self.clean_save_dir()
+        self.create_save_dir()
         logger.info("Starting Reconstruction")
 
         result = Image(self.config_volume, self.device, init="ones")        
@@ -93,21 +92,17 @@ class Algorithm(object):
                                         
                     next_result.values += backprojection
                 
-                result.values = torch.where(
-                    result.mask,
-                    (result.values / self.sensitivity.values) * next_result.values,
-                    torch.tensor(0.0, device=self.device)
-                )
+                # result.values = torch.where(
+                #     result.mask,
+                #     (result.values / self.sensitivity.values) * next_result.values,
+                #     torch.tensor(0.0, device=self.device)
+                # )
+                result.values = (result.values / self.sensitivity.values) * next_result.values
 
-                next_result.values = torch.zeros(
-                    next_result.dim_in_voxels.x,
-                    next_result.dim_in_voxels.y,
-                    next_result.dim_in_voxels.z,
-                    device=self.device,
-                )
+                next_result.values.zero_()
 
             if iter % self.config_algo["save_every"] == 0 or iter == self.config_algo["last_iter"]:
-                with h5py.File(self.save_reco_dir / f"{self.run_name}.iter.{iter}.h5", "w") as f:
+                with h5py.File(self.save_reco_dir / f"iter.{iter}.h5", "w") as f:
                     f.create_dataset("image", data=result.values.cpu().numpy())
 
         elapsed = time.time() - start
@@ -135,8 +130,13 @@ class Algorithm(object):
                     map_location=self.device,
                     weights_only=True
                 )
+            
+
+     
         else:
             logger.info("Sensivitiy is disabled, setting it to ones")
+
+        self.sensitivity.values = self.sensitivity.values /self.config_algo["OSEM_n_subsets"]
 
     @staticmethod
     def compute_sensitivity(
@@ -173,16 +173,73 @@ class Algorithm(object):
         )
                 
         if config_sens["sensitivity_model"] == "solid_angle":
-                logger.info(f"Computing sensitivity with model:  solid angle with attenuation: {config_sens['include_attenuation']}")
-                sensitivity.values = sensitivity_models.solid_angle(
-                    cameras, 
-                    volume_config, 
-                    E_0, 
-                    torch_device,
-                    config_sens["sub_N"],
-                    config_sens["include_attenuation"],
-                    x, y, z
-                )
+            logger.info(f"Computing sensitivity with model:  solid angle with attenuation: {config_sens['include_attenuation']}")
+            sensitivity.values = sensitivity_models.solid_angle(
+                cameras, 
+                volume_config, 
+                E_0, 
+                torch_device,
+                config_sens["sub_N"],
+                config_sens["include_attenuation"],
+                x, y, z
+            )
+        elif config_sens["sensitivity_model"] == "fake_list_mode":
+            logger.info(f"Computing sensitivity with model:  fake list-mode with attenuation:")
+
+            sensitivity_models.list_mode_sensitivity(
+                cameras, 
+                E_0, 
+                torch_device,
+                config_sens["sub_N"],
+                config_sens["sub_E"],
+                config_sens["output_hdf5"]
+            )
+            
+            # Load generated events and backproject into sensitivity image
+            logger.info(f"Loading events from {config_sens['output_hdf5']}")
+            with h5py.File(config_sens["output_hdf5"], 'r') as f:
+                events_data = f['listmode'][:]
+            
+            # Create Events object from the synthetic list-mode data
+            sens_events = Events()
+            sens_events.load_from_array(events_data, torch_device)
+            
+            logger.info(f"Backprojecting {sens_events.n_events:,} events into sensitivity image...")
+            sensitivity.values.zero_()
+            
+            # Backproject in batches to manage memory
+            batch_size = config_sens.get("batch_size", 10000)
+            all_indices = torch.arange(sens_events.n_events, device=torch_device)
+            
+            # Create SM_Model for backprojection
+            sm_model = SM_Model(
+                {"model": config_sens.get("model", "cone"), 
+                 "cone_thickness": config_sens.get("cone_thickness", 1.0),
+                 "use_attenuation": config_sens.get("include_attenuation", False)},
+                volume_config,
+                cameras,
+                E_0,
+                torch_device
+            )
+            
+            for batch_start in range(0, sens_events.n_events, batch_size):
+                batch_end = min(batch_start + batch_size, sens_events.n_events)
+                batch_indices = all_indices[batch_start:batch_end]
+                
+                batch_lines = sm_model.SM_line(sens_events, batch_indices)
+                sensitivity.values += batch_lines.sum(dim=0)
+                
+                if (batch_end % (batch_size * 10) == 0) or (batch_end == sens_events.n_events):
+                    logger.info(f"Processed {batch_end:,}/{sens_events.n_events:,} events")
+            
+            # Normalize sensitivity
+            sensitivity.values[~sensitivity.mask] = 0.0
+            voldim = volume_config["n_voxels"][0] * volume_config["n_voxels"][1] * volume_config["n_voxels"][2]
+            sensitivity.values = (sensitivity.values / torch.linalg.norm(sensitivity.values)) * voldim
+            sensitivity.values[~sensitivity.mask] = 1.0
+            
+            logger.info("Sensitivity backprojection complete")
+
         else:
             logger.fatal(
                 f"Sensitivity model {config_sens['sensitivity_model']} not recognized"
@@ -195,7 +252,7 @@ class Algorithm(object):
             sens_filename = Path(
                 "sens_"
                 + str(config_sens["sensitivity_model"])
-                + "_vol_" + str(volume_config["volume_dimensions"][0])+"_"+str(volume_config["volume_dimensions"][1])+"_"+str(volume_config["volume_dimensions"][2])
+                + "_shape_" + str(volume_config["n_voxels"][0])+"_"+str(volume_config["n_voxels"][1])+"_"+str(volume_config["n_voxels"][2])
                 + "_subN_" + str(config_sens["sub_N"][0])+"_"+str(config_sens["sub_N"][1])+"_"+str(config_sens["sub_N"][2])
             + "_Attn_" + str(config_sens["include_attenuation"])
             + ".pth"
@@ -207,11 +264,46 @@ class Algorithm(object):
         torch.save(sensitivity.values.cpu(), save_path)
         return sensitivity.values
 
-    def clean_save_dir(self) -> None:
-        self.save_reco_dir = Path(self.config_algo["save_dir"])
+    def create_save_dir(self) -> None:
+        # Extract LM filename without path, extension, and "_LM" suffix
+        lm_file = Path(self.data_config["file_name"]).stem
+        if lm_file.endswith("_LM"):
+            lm_file = lm_file[:-3]
+        
+        if self.config_algo.get("save_file", None) is None:
+            # Create parameter string for folder name
+            img_shape = f"{self.config_volume['n_voxels'][0]}x{self.config_volume['n_voxels'][1]}x{self.config_volume['n_voxels'][2]}"
+            params_str = ( f"{img_shape}__"
+                f"Ev_filt_{self.data_config['max_ARM_sigma']:.2f}__"
+                f"Nev_{self.data_config['n_events']:.0e}__"
+                f"osem_Nss{self.config_algo['OSEM_n_subsets']}__"
+                f"model_{self.config_algo['cone_thickness']}_{self.config_algo['model']}__"
+                f"sens_{int(self.config_algo['use_sensitivity'])}__"
+                f"attn_{int(self.config_algo['use_attenuation'])}__"
+                f"Eres_{int(self.config_algo.get('energy_resolution',1))}"        
+            )
+            #TODO fix energy resolution parsing
+            
+            # Build hierarchical path: recons/{lm_filename}/{params}/
+            base_dir = Path(self.config_algo["save_dir"])
+            self.save_reco_dir = base_dir / lm_file / params_str
+        else:
+            self.save_reco_dir = Path(self.config_algo["save_dir"]) / lm_file/self.config_algo["save_file"]
+        
+        # Check if folder exists and has files
+        if self.save_reco_dir.exists() and any(self.save_reco_dir.iterdir()):
+            logger.warning(f"Folder {self.save_reco_dir} already exists and contains files")
+            response = input("Do you want to overwrite the existing files? (y/n): ").strip().lower()
+            if response != 'y':
+                logger.info("Reconstruction cancelled by user")
+                sys.exit(0)
+            
+            # Clean existing files
+            for file in self.save_reco_dir.glob("*"):
+                try:
+                    file.unlink()
+                except Exception as e:
+                    logger.warning(f"Could not delete file {file}: {e}")
+        
+        # Create directory if it doesn't exist
         self.save_reco_dir.mkdir(parents=True, exist_ok=True)
-        for file in self.save_reco_dir.glob("*"):
-            try:
-                file.unlink()
-            except Exception as e:
-                logger.warning(f"Could not delete file {file}: {e}")
