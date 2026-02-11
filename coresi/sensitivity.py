@@ -143,9 +143,9 @@ def list_mode_sensitivity(
     vox_x_pos = (a + (mm + 0.5) * hx).flatten()
     vox_y_pos = (c + (nn + 0.5) * hy).flatten()
     vox_z_pos = ((ll + 0.5) * hz).flatten()
-    glob_vox_x_pos = camera.centre[0] + vox_z_pos
-    glob_vox_y_pos = vox_y_pos
-    glob_vox_z_pos = vox_x_pos
+    glob_vox_x_pos = (camera.centre[0] + vox_z_pos) * 10  # Convert cm to mm
+    glob_vox_y_pos = vox_y_pos * 10  # Convert cm to mm
+    glob_vox_z_pos = vox_x_pos * 10  # Convert cm to mm
 
     N_det = len(glob_vox_x_pos)
     logger.info(f"Detector grid: {N_det} points ({sub_N[0]}x{sub_N[1]}x{sub_N[2]})")
@@ -176,13 +176,26 @@ def list_mode_sensitivity(
     N_pairs = len(det1_x)
     logger.info(f"Total detector pairs: {N_pairs:,} (excluding self-pairs, order matters)")
     
-    # Energy splits - float32 on GPU
-    E_compton_shoulder = (2.0 / (2.0 + E_0 / 511)) * E_0
-    E1_values = torch.arange(sub_E, E_compton_shoulder, sub_E, device=sens_device, dtype=torch.float32)
-    E2_values = E_0 - E1_values
+    # Energy splits - float32 on GPU (commented out: flat energy sampling)
+    # E_compton_shoulder = (2.0 / (2.0 + E_0 / 511)) * E_0
+    # E1_values = torch.arange(sub_E, E_compton_shoulder, sub_E, device=sens_device, dtype=torch.float32)
+    # E2_values = E_0 - E1_values
+    # N_energy_splits = len(E1_values)
+    # 
+    # logger.info(f"Energy splits: {N_energy_splits} (step={sub_E} keV)")
+    # logger.info(f"E1 range: [{E1_values.min().item():.2f}, {E1_values.max().item():.2f}] keV")
+    # logger.info(f"E2 range: [{E2_values.max().item():.2f}, {E2_values.min().item():.2f}] keV")
+
+    # Angle sampling - flat in theta (degrees), compute energies via Compton kinematics
+    theta_deg = torch.arange(10, 180.0, sub_E, device=sens_device, dtype=torch.float32)
+    theta_rad = torch.deg2rad(theta_deg)
+    cos_theta = torch.cos(theta_rad)
+    E2_values = E_0 / (1.0 + (E_0 / 511.0) * (1.0 - cos_theta))
+    E1_values = E_0 - E2_values
     N_energy_splits = len(E1_values)
-    
-    logger.info(f"Energy splits: {N_energy_splits} (step={sub_E} keV)")
+
+    logger.info(f"Angle splits: {N_energy_splits} (step={sub_E} deg)")
+    logger.info(f"Theta range: [{theta_deg.min().item():.2f}, {theta_deg.max().item():.2f}] deg")
     logger.info(f"E1 range: [{E1_values.min().item():.2f}, {E1_values.max().item():.2f}] keV")
     logger.info(f"E2 range: [{E2_values.max().item():.2f}, {E2_values.min().item():.2f}] keV")
     
@@ -228,7 +241,7 @@ def list_mode_sensitivity(
     
     with h5py.File(output_hdf5, 'w') as f:
         f.create_dataset('listmode', data=events_np, compression='gzip', dtype='float32')
-        f.attrs['columns'] = ['x1_cm', 'y1_cm', 'z1_cm', 'e1_keV', 'x2_cm', 'y2_cm', 'z2_cm', 'e2_keV', 'rsectorID']
+        f.attrs['columns'] = ['x1_mm', 'y1_mm', 'z1_mm', 'e1_keV', 'x2_mm', 'y2_mm', 'z2_mm', 'e2_keV', 'rsectorID']
         f.attrs['E_0'] = float(E_0)
         f.attrs['sub_N'] = sub_N
         f.attrs['sub_E'] = float(sub_E)
@@ -236,7 +249,3 @@ def list_mode_sensitivity(
         f.attrs['N_energy_splits'] = int(N_energy_splits)
     
     logger.info(f"Synthetic list-mode HDF5 saved to: {output_hdf5} ({N_total_events:,} events)")
-
-
-
-

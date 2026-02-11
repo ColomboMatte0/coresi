@@ -24,19 +24,22 @@ class Events:
     """
     def __init__(
             self,
-            data_config: dict,
+            data_file_name: str,
             constants: dict,
-            events_device:torch.device,
-            cameras: list[Camera]):
+            events_device: torch.device,
+            cameras: list[Camera],
+            data_n_events: int = None,
+            data_E0: float = None,
+            data_max_ARM_sigma: float = 0.0):
         """
         filename: HDF5 with columns [x1,y1,z1,e1, x2,y2,z2,e2, Rs]
         source_E0: list of possible source energies (or None if unknown)
         """
         start = time.time()
-        logger.info(f"Processing {data_config['file_name']}")
+        logger.info(f"Processing {data_file_name}")
         self.device = events_device
-        with h5py.File(data_config["file_name"], "r") as f:
-            raw = torch.tensor(f["listmode"][:data_config["n_events"]], dtype=torch.float32)
+        with h5py.File(data_file_name, "r") as f:
+            raw = torch.tensor(f["listmode"][:data_n_events], dtype=torch.float32)
 
         raw = raw.to(self.device)
     
@@ -50,10 +53,10 @@ class Events:
         axis = axis / axis.norm(dim=1, keepdim=True)   # normalize
         self.axis = axis                                # [N,3]
 
-        if data_config["E0"] is None:
+        if data_E0 is None:
             self.E0 = self.Ee + self.Eg
         else:
-            self.E0 = torch.full_like(self.Ee, data_config["E0"])
+            self.E0 = torch.full_like(self.Ee, data_E0)
 
         cosbeta = (1.0 - self.Ee * 511.0 / (self.E0 * (self.E0 - self.Ee))).clamp(-1.0, 1.0)
         self.beta = torch.acos(cosbeta)
@@ -63,7 +66,7 @@ class Events:
         const_db = self.get_doppler_constants()
         sigma_doppler = self.compute_sigma_doppler(self.E0, self.Ee, cosbeta, const_db)
 
-        E_resolution = self.get_energy_resolutions(data_config["E0"], constants)
+        E_resolution = self.get_energy_resolutions(data_E0, constants)
         sigma_energy = self.compute_sigma_energy(self.E0, self.Ee, E_resolution)  
 
         spatial_resolutions = self.get_spatial_resolutions(constants)
@@ -72,11 +75,11 @@ class Events:
         self.inv_sigma_total_sq = torch.reciprocal(sigma_total**2)
         self.inv_sigma_total = torch.reciprocal(sigma_total)
 
-        if data_config["max_ARM_sigma"] != 0:
-            self.filter_events(sigma_total=sigma_total,max_ARM=data_config['max_ARM_sigma'])
+        if data_max_ARM_sigma != 0:
+            self.filter_events(sigma_total=sigma_total,max_ARM=data_max_ARM_sigma)
 
         self.n_events = len(self.V1) 
-        logger.info(f"Loaded {self.n_events:.2e} events from {data_config['file_name']}")
+        logger.info(f"Loaded {self.n_events:.2e} events from {data_file_name}")
 
         self.modify_views()
 

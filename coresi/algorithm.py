@@ -10,6 +10,7 @@ import time
 
 import numpy as np
 import torch
+import torchvision.transforms.functional as TF
 
 import coresi.sensitivity as sensitivity_models
 from coresi.single_layer_camera import SingleLayerCamera as Camera
@@ -138,8 +139,8 @@ class Algorithm(object):
 
         self.sensitivity.values = self.sensitivity.values /self.config_algo["OSEM_n_subsets"]
 
-    @staticmethod
-    def compute_sensitivity(
+    def compute_sensitivity(self,
+        constants: dict,
         E_0: float,
         volume_config: dict,
         cameras: list[Camera],
@@ -183,6 +184,8 @@ class Algorithm(object):
                 config_sens["include_attenuation"],
                 x, y, z
             )
+            
+
         elif config_sens["sensitivity_model"] == "fake_list_mode":
             logger.info(f"Computing sensitivity with model:  fake list-mode with attenuation:")
 
@@ -197,40 +200,45 @@ class Algorithm(object):
             
             # Load generated events and backproject into sensitivity image
             logger.info(f"Loading events from {config_sens['output_hdf5']}")
-            with h5py.File(config_sens["output_hdf5"], 'r') as f:
-                events_data = f['listmode'][:]
             
             # Create Events object from the synthetic list-mode data
-            sens_events = Events()
-            sens_events.load_from_array(events_data, torch_device)
+            sens_events = Events(config_sens["output_hdf5"],
+                                constants,
+                                torch_device,
+                                cameras,
+                                None,
+                                E_0,
+                                0.0)
             
             logger.info(f"Backprojecting {sens_events.n_events:,} events into sensitivity image...")
             sensitivity.values.zero_()
             
-            # Backproject in batches to manage memory
-            batch_size = config_sens.get("batch_size", 10000)
             all_indices = torch.arange(sens_events.n_events, device=torch_device)
             
-            # Create SM_Model for backprojection
-            sm_model = SM_Model(
-                {"model": config_sens.get("model", "cone"), 
-                 "cone_thickness": config_sens.get("cone_thickness", 1.0),
-                 "use_attenuation": config_sens.get("include_attenuation", False)},
-                volume_config,
-                cameras,
-                E_0,
-                torch_device
-            )
+            batch_size = self.config_algo["batch_size"]
+            log_every = max(1, sens_events.n_events // (10 * batch_size))  # Log ~10 times
             
-            for batch_start in range(0, sens_events.n_events, batch_size):
+            for batch_idx, batch_start in enumerate(range(0, sens_events.n_events, batch_size)):
                 batch_end = min(batch_start + batch_size, sens_events.n_events)
                 batch_indices = all_indices[batch_start:batch_end]
                 
-                batch_lines = sm_model.SM_line(sens_events, batch_indices)
+                batch_lines = self.SM_line(sens_events, batch_indices)
                 sensitivity.values += batch_lines.sum(dim=0)
                 
-                if (batch_end % (batch_size * 10) == 0) or (batch_end == sens_events.n_events):
-                    logger.info(f"Processed {batch_end:,}/{sens_events.n_events:,} events")
+                # Progress logging
+                if (batch_idx % log_every == 0) or (batch_end == sens_events.n_events):
+                    progress_pct = 100 * batch_end / sens_events.n_events
+                    logger.info(f"Backprojection: {batch_end:,}/{sens_events.n_events:,} events ({progress_pct:.1f}%)")
+            
+            # Rotate sensitivity over all cameras
+            logger.info(f"Rotating sensitivity image over {len(cameras)} cameras...")
+            tmp_zxy = sensitivity.values.permute(2, 0, 1)  # from (x,y,z) to (z,x,y)
+            rotated_sum = torch.zeros_like(sensitivity.values)
+            for i in range(len(cameras)):
+                angle_deg = i * (360 / len(cameras))
+                tmp = TF.rotate(tmp_zxy, angle=angle_deg, interpolation=TF.InterpolationMode.BILINEAR)
+                rotated_sum += tmp.permute(1, 2, 0)  # back to (x,y,z)
+            sensitivity.values = rotated_sum
             
             # Normalize sensitivity
             sensitivity.values[~sensitivity.mask] = 0.0
@@ -247,7 +255,7 @@ class Algorithm(object):
             sys.exit(1)
 
         if config_sens["file_name"] is not None:
-             sens_filename = Path(config_sens["file_name"])
+            sens_filename = Path(config_sens["file_name"])
         else:
             sens_filename = Path(
                 "sens_"

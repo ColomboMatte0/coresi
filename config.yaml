@@ -15,7 +15,7 @@ data:
 
 # Cameras have scatterer layers normal on z axis, centered on the z axis, below the source
 cameras:
-  n_cameras: 12
+  n_cameras: 1
   # Cameras scatterer have the same characteristics besides their positions
   common_attributes:
     material: LSO
@@ -107,22 +107,22 @@ cameras:
     center: [8.66, -5, 0]
 
 volume:
-  # volume_dimensions: [18.5, 18.5, 6.5] # In centimeters
-  # n_voxels: [37, 37, 13]
-  volume_dimensions: [16.2, 16.2, 3.2] # In centimeters
-  n_voxels: [81, 81, 16]
+  volume_dimensions: [18.5, 18.5, 6.5] # In centimeters
+  n_voxels: [37, 37, 13]
+  # volume_dimensions: [16.2, 16.2, 3.2] # In centimeters
+  # n_voxels: [81, 81, 16]
   volume_centre: [0, 0, 0]
 
 sensitivity:
   sub_N: [10,10,10]  # Number of subdivisions per detector for sensitivity calculation
   # sensitivity_model: solid_angle
   sensitivity_model: fake_list_mode
-  sub_E: 20  # Energy splitting step in keV
+  sub_E: 10  # Energy splitting step in keV
   output_hdf5: sensitivity/test_sens.h5
   include_attenuation: 0
   save_dir: sensitivity
-  # file_name: sens_solid_angle_vol_18_18_6_subN_32_32_10_Attn_True_no_compt.pth
-  file_name:
+  file_name: 
+  # file_name:
 
 lm_algo:
   first_iter: 1

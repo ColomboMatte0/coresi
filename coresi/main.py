@@ -20,7 +20,7 @@ from coresi.Events import Events
 from coresi.algorithm import Algorithm
 
 parser = argparse.ArgumentParser(
-    description="CORESI - Code for Compton camera image reconstruction (default action)",
+    description="CORESI - Code for Compton camera image reconstruction",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
@@ -117,6 +117,7 @@ def run():
 
     if args.sensitivity:
         _ = reco.compute_sensitivity(
+            constants,
             config["data"]["E0"],
             config["volume"],
             cameras,
@@ -127,10 +128,14 @@ def run():
 
     reco.init_sensitivity()
     
-    events = Events(config["data"],
+    events = Events(config["data"]["file_name"],
                     constants,
                     args.device, 
-                    cameras)
+                    cameras,
+                    config["data"]["n_events"],
+                    config["data"]["E0"],
+                    config["data"]["max_ARM_sigma"])
+                    
 
     result = reco.run_OSEM(events)
 
