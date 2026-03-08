@@ -13,3 +13,6 @@ tests/
 misc/
 test_attn/
 .vscode/
+.editorconfig
+Makefile
+pyproject.toml
