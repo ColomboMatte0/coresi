@@ -5,5 +5,11 @@
 **/*.log
 *~
 __pycache__
-checkpoints
-dist
+data/
+recons/
+sensitivity/
+batch_scripts/
+tests/
+misc/
+test_attn/
+.vscode/
